@@ -4,7 +4,7 @@
 > **Instructions for AI coder:** Work through each checkbox in order. Each task is self-contained with exact file paths, code expectations, and acceptance criteria. Mark `[x]` when done. Do NOT skip steps — later steps depend on earlier ones.
 
 > **Project:** JanSaathi — AI for Civic & Legal Empowerment (Indian Hackathon)  
-> **Stack:** Next.js 14 (App Router) + FastAPI (Python) + LangGraph + ChromaDB + OpenAI  
+> **Stack:** Next.js 14 (App Router) + FastAPI (Python) + LangGraph + ChromaDB + Groq (Llama 3) + HuggingFace Local Embeddings
 > **Repo Root:** `C:\Users\carpe\OOSC`
 
 ---
@@ -603,7 +603,7 @@
 
 ## Phase 3: Hybrid RAG Pipeline
 
-- [ ] **3.1 — Build the hybrid RAG retriever**
+- [x] **3.1 — Build the hybrid RAG retriever**
   - File: `backend/rag/pipeline.py`
   - Implement `HybridRAGPipeline` class with:
     1. `__init__()`: Load ChromaDB collection + BM25 index from disk
@@ -615,7 +615,7 @@
     7. `retrieve(query: str, filters: dict = None) -> list[Document]`: Full pipeline — expand → hybrid search → rerank → return top 5 with scores
   - Each returned document should include: `page_content`, `metadata` (act_name, section_number), `relevance_score`
 
-- [ ] **3.2 — Test the RAG pipeline**
+- [x] **3.2 — Test the RAG pipeline**
   - Create `backend/rag/test_rag.py`:
     - Test queries:
       1. "How to file RTI application"

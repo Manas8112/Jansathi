@@ -1,12 +1,12 @@
 import os
-from langchain_openai import ChatOpenAI
+from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import AIMessage
 from agents.state import AgentState
 
 # We use the smarter model for complex legal drafting
-llm = ChatOpenAI(
-    model=os.getenv("MODEL_NAME", "gpt-4o"),
+llm = ChatGroq(
+    model=os.getenv("MODEL_NAME", "llama-3.1-70b-versatile"),
     temperature=0.2
 )
 

@@ -1,11 +1,11 @@
 import os
-from langchain_openai import ChatOpenAI
+from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from agents.state import AgentState
 
-# We use the cheaper model for intent routing
-llm = ChatOpenAI(
-    model=os.getenv("MODEL_CHEAP", "gpt-4o-mini"),
+# We use the fast versatile model for intent routing
+llm = ChatGroq(
+    model=os.getenv("MODEL_CHEAP", "llama-3.1-8b-instant"),
     temperature=0.0
 )
 

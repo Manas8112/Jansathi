@@ -1,9 +1,8 @@
 fastapi==0.115.0
 uvicorn[standard]==0.30.0
 python-dotenv==1.0.1
-openai==1.52.0
-langchain
-langchain-openai
+langchain-groq
+langchain-huggingface
 langchain-community
 langchain-experimental
 langgraph
