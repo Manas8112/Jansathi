@@ -1,16 +1,17 @@
 import os
 import chromadb
 from chromadb.config import Settings
-from langchain_openai import OpenAIEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 
 # Initialize ChromaDB client
 PERSIST_DIRECTORY = os.getenv("CHROMA_PERSIST_DIR", "./data/chroma_db")
 client = chromadb.PersistentClient(path=PERSIST_DIRECTORY, settings=Settings(anonymized_telemetry=False))
 
-# Use OpenAI's embedding model for Indian legal context (text-embedding-3-large is recommended)
-embedding_function = OpenAIEmbeddings(
-    model=os.getenv("EMBEDDING_MODEL", "text-embedding-3-large"),
-    api_key=os.getenv("OPENAI_API_KEY")
+# Use a fast local model for embeddings
+embedding_function = HuggingFaceEmbeddings(
+    model_name="BAAI/bge-small-en-v1.5",
+    model_kwargs={'device': 'cpu'},
+    encode_kwargs={'normalize_embeddings': True}
 )
 
 def get_collection(collection_name: str = "jansaathi_legal_kb"):
