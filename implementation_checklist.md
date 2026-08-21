@@ -630,7 +630,7 @@
 
 ## Phase 4: Fine-Tuned Intent Classifier
 
-- [ ] **4.1 — Download official datasets (NOT GPT-generated)**
+- [x] **4.1 — Download official datasets (NOT GPT-generated)**
   - File: `backend/training/download_datasets.py`
   - Script that downloads and processes these **real, official datasets**:
   
@@ -722,7 +722,7 @@
   - Target: ~200 samples per class, 7 classes = ~1400 total samples
   - Save processed data to: `backend/data/datasets/intent_data.json`
 
-- [ ] **4.1b — Download pre-trained InLegalBERT (Indian Legal BERT)**
+- [x] **4.1b — Download pre-trained InLegalBERT (Indian Legal BERT)**
   - Instead of generic `distilbert-base-uncased`, use **InLegalBERT** as base model:
   - Source: `huggingface.co/law-ai/InLegalBERT`
   - This model is **pre-trained on Indian legal texts** (Supreme Court + High Court judgments)
@@ -735,7 +735,7 @@
     ```
   - This is a **real research model** from IIT Kharagpur — very impressive for judges
 
-- [ ] **4.2 — Train the intent classifier on official data**
+- [x] **4.2 — Train the intent classifier on official data**
   - File: `backend/training/intent_classifier.py`
   - Fine-tune **InLegalBERT** (`law-ai/InLegalBERT`) on the processed official dataset:
     1. Load processed data from `data/datasets/intent_data.json`
@@ -769,7 +769,7 @@
 
 ## Phase 5: Guardrails & Output Validation
 
-- [ ] **5.1 — Define Pydantic output schemas**
+- [x] **5.1 — Define Pydantic output schemas**
   - File: `backend/guardrails/schemas.py`
   - Define these models:
     ```python
@@ -831,7 +831,7 @@
         website: str | None
     ```
 
-- [ ] **5.2 — Build citation verifier**
+- [x] **5.2 — Build citation verifier**
   - File: `backend/guardrails/verifier.py`
   - Implement `CitationVerifier` class:
     - `__init__(knowledge_graph)`: Takes the knowledge graph
@@ -839,14 +839,14 @@
     - Returns: `{"all_verified": bool, "details": [...], "unverified_count": int}`
     - Includes fuzzy matching for slight section format differences (e.g., "S.6" vs "Section 6" vs "S 6(1)")
 
-- [ ] **5.3 — Build hallucination detector**
+- [x] **5.3 — Build hallucination detector**
   - File: `backend/guardrails/pipeline.py`
   - Implement `HallucinationDetector` class:
     - `check(response_text: str, retrieved_context: list[str]) -> dict`
     - Uses GPT-4o-mini to verify if each claim in the response is grounded in the retrieved context
     - Returns: `{"is_grounded": bool, "grounding_score": float, "unsupported_claims": [...]}`
 
-- [ ] **5.4 — Build confidence scorer**
+- [x] **5.4 — Build confidence scorer**
   - File: `backend/guardrails/pipeline.py`
   - Implement `ConfidenceScorer` class:
     - Inputs: retrieval scores, citation verification result, grounding result, intent confidence
