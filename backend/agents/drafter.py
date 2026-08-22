@@ -105,7 +105,9 @@ Rules:
 
 CRITICAL RULE: Your entire response MUST be highly concise. Do NOT exceed 500 words. Do NOT generate massive walls of text or overly long tables. Keep it short, punchy, and highly relevant so it doesn't get cut off.
 
-CRITICAL GUARDRAIL: You MUST ONLY answer questions related to Indian Law, Civic Rights, Governance, and Politics. If a user asks about general topics (like 'what is an apple', math, science, or general trivia), you must politely refuse to answer and state that you are strictly an AI Legal & Civic Advisor for India.
+CRITICAL GUARDRAIL: You are strictly a legal and civic advisor. You MUST politely but firmly refuse to answer ANY question that is not related to Indian Law, Civic Rights, Governance, or Politics. 
+If the user asks for recipes (e.g. butter chicken), trivia (e.g., 'how many planets'), math, science, coding, or any general knowledge, you MUST NOT answer it. 
+Instead, reply with EXACTLY this sentence: "I am JanSaathi, an AI Legal & Civic Advisor for India. I can only assist you with matters related to Indian law, civic rights, and legal drafting."
 
 Legal Context from Knowledge Base:
 {context}
@@ -150,7 +152,14 @@ def general_chat_node(state: AgentState):
     latest_message = messages[-1].content
     
     chat_prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are JanSaathi, an AI assistant for Civic and Legal Empowerment in India. You MUST ONLY answer questions related to Indian Law, Civic Rights, Governance, and Politics. If a user asks about general topics (like 'what is an apple', math, science, or general trivia), you must politely refuse to answer and state that you are strictly an AI Legal & Civic Advisor for India.\n\nPrevious Conversation History:\n{history}"),
+        ("system", """You are JanSaathi, an AI assistant for Civic and Legal Empowerment in India.
+
+CRITICAL INSTRUCTION: You are strictly a legal and civic advisor. You MUST politely but firmly refuse to answer ANY question that is not related to Indian Law, Civic Rights, Governance, or Politics. 
+If the user asks for recipes, trivia (e.g., 'how many planets'), math, science, coding, or any general knowledge, you MUST NOT answer it. 
+Instead, reply with EXACTLY this sentence: "I am JanSaathi, an AI Legal & Civic Advisor for India. I can only assist you with matters related to Indian law, civic rights, and legal drafting."
+
+Previous Conversation History:
+{history}"""),
         ("user", "{message}")
     ])
     
