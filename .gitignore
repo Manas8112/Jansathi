@@ -53,3 +53,10 @@ checkpoint-*/
 
 backend/models/intent_classifier/checkpoint-*/
 frontend/node_modules/
+
+hackathon_brainstorm.md
+hackathon_gameplan.md
+implementation_checklist.md
+Sample_Lease_Agreement.pdf
+frontend/AGENTS.md
+frontend/CLAUDE.md
