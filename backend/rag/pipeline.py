@@ -12,8 +12,18 @@ class HybridRAGPipeline:
         self.collection_name = collection_name
         self.collection = get_collection(collection_name)
         
-        # Cross-Encoder for reranking
-        self.reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-12-v2', max_length=512)
+        # Cross-Encoder for reranking (Wrap in try-except for offline/proxy resilience)
+        try:
+            # Try offline first
+            self.reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-12-v2', max_length=512, local_files_only=True)
+        except Exception:
+            try:
+                # If not cached, try downloading normally
+                print("Local cross-encoder not found. Attempting to download from Hugging Face...")
+                self.reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-12-v2', max_length=512)
+            except Exception as e:
+                print(f"WARNING: Could not load CrossEncoder due to network/proxy issues. Reranking is disabled. Error: {e}")
+                self.reranker = None
         
         # LLM for query expansion
         self.llm = ChatGroq(
@@ -104,6 +114,11 @@ class HybridRAGPipeline:
         """Use a local cross-encoder model to accurately rerank the merged candidates."""
         if not candidates:
             return []
+            
+        if self.reranker is None:
+            # Fallback if cross-encoder failed to load due to proxy/network issues
+            print("[RAG] Reranker disabled. Returning un-reranked hybrid results.")
+            return candidates[:top_n]
             
         pairs = [[query, doc["content"]] for doc in candidates]
         scores = self.reranker.predict(pairs)
