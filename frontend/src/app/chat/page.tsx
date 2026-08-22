@@ -82,7 +82,7 @@ export default function ChatPage() {
 
   const deleteConversation = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (!confirm("Are you sure you want to delete this chat?")) return;
+    if (!confirm("⚠️ Are you sure you want to delete this ENTIRE chat?\n\n(If you just want to delete a saved PDF, please go to the 'My Documents' page instead. Deleting this chat will erase all message history!)")) return;
     
     try {
       const token = Cookies.get("token");
