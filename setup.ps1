@@ -2,14 +2,48 @@
 
 Write-Host "Setting up JanSaathi project..." -ForegroundColor Cyan
 
-# 1. Fetch AI Models (Git LFS)
+# 1. Fetch AI Models (Git LFS or Direct Download)
 Write-Host "`n[1/4] Fetching trained AI models (this may take a minute)..." -ForegroundColor Yellow
-try {
-    git lfs install
-    git lfs pull
-    Write-Host "Models downloaded successfully!" -ForegroundColor Green
-} catch {
-    Write-Host "WARNING: Git LFS not found or failed to pull. The local intent router may fall back to the cloud." -ForegroundColor Red
+
+$modelFile = "backend\models\intent_classifier\model.safetensors"
+$modelIsMissing = $false
+if (Test-Path $modelFile) {
+    $fileInfo = Get-Item $modelFile
+    if ($fileInfo.Length -lt 1MB) {
+        $modelIsMissing = $true
+    }
+} else {
+    $modelIsMissing = $true
+}
+
+if ($modelIsMissing) {
+    try {
+        git lfs install 2>$null
+        git lfs pull 2>$null
+    } catch {}
+    
+    # Recheck if it was pulled successfully
+    $fileInfo = Get-Item $modelFile -ErrorAction SilentlyContinue
+    if (-not $fileInfo -or $fileInfo.Length -lt 1MB) {
+        Write-Host "Git LFS failed (likely because you downloaded the ZIP). Downloading model directly..." -ForegroundColor Cyan
+        $url = "https://media.githubusercontent.com/media/Manas8112/Jansathi/main/backend/models/intent_classifier/model.safetensors"
+        
+        if (-not (Test-Path "backend\models\intent_classifier")) {
+            New-Item -ItemType Directory -Force -Path "backend\models\intent_classifier" | Out-Null
+        }
+        
+        Invoke-WebRequest -Uri $url -OutFile $modelFile
+    }
+    
+    # Final check
+    $fileInfo = Get-Item $modelFile -ErrorAction SilentlyContinue
+    if ($fileInfo -and $fileInfo.Length -gt 1MB) {
+        Write-Host "Models downloaded successfully!" -ForegroundColor Green
+    } else {
+        Write-Host "WARNING: Failed to download the model. The local intent router may fall back to the cloud." -ForegroundColor Red
+    }
+} else {
+    Write-Host "Model already exists and is the correct size!" -ForegroundColor Green
 }
 
 # 2. Install Frontend dependencies
