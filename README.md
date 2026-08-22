@@ -56,6 +56,13 @@ graph TD
 
 ---
 
+## Quick Links 🔗
+- [**Frontend Architecture & UI Details**](./frontend/README.md)
+- [**Backend & ML Engine Details**](./backend/README.md)
+- [**Scalability & Feasibility Report**](./SCALABILITY_FEASIBILITY.md)
+
+---
+
 ## Technical Deep-Dive
 
 ### 1. Intent Classification (`agents/intent_router.py`)
