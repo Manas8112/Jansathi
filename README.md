@@ -4,6 +4,9 @@
   <p>Built with LangGraph, Hybrid RAG, NetworkX Knowledge Graphs, and a Custom-Trained Intent Classifier</p>
 </div>
 
+> **Quick Links:**
+> [Setup & Run](#running-locally) · [Architecture Diagram](#state-graph-langgraph-pipeline) · [Technical Deep-Dive](#technical-deep-dive) · [Repo Structure](#repository-structure)
+
 ---
 
 ## Problem Statement
