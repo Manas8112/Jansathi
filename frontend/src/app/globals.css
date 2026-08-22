@@ -1,0 +1,100 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@theme inline {
+  --color-semantic-green: #22c55e;
+  --color-semantic-red: #ef4444;
+  --color-semantic-blue: #60a5fa;
+  --color-semantic-purple: #8b5cf6;
+  --color-semantic-slate: #64748b;
+
+  --font-sans: var(--font-inter), Arial, Helvetica, sans-serif;
+  --font-heading: var(--font-dm-sans), var(--font-sans);
+}
+
+:root {
+  /* Light Theme (Modern Zinc Aesthetic) */
+  --color-bg-base: #f4f4f5;
+  --color-bg-surface: #fafafa;
+  --color-bg-elevated: #e4e4e7;
+  --color-bg-subtle: #d4d4d8;
+  
+  --color-accent: #d97706;
+  --color-accent-dim: #b45309;
+  --color-accent-muted: rgba(217, 119, 6, 0.12);
+  --color-accent-glow: rgba(217, 119, 6, 0.06);
+  
+  --color-text-primary: #18181b;
+  --color-text-secondary: #52525b;
+  --color-text-muted: #a1a1aa;
+  
+  --color-border-dim: rgba(0,0,0,0.08);
+  --color-border-strong: rgba(0,0,0,0.15);
+  --color-border-accent: rgba(217, 119, 6, 0.3);
+  
+  --color-semantic-purple: #8b5cf6;
+  --color-semantic-slate: #64748b;
+}
+
+:root[data-theme="dark"] {
+  /* Dark Theme */
+  --color-bg-base: #080808;
+  --color-bg-surface: #111111;
+  --color-bg-elevated: #1a1a1a;
+  --color-bg-subtle: #222222;
+
+  --color-accent: #e6a336;
+  --color-accent-dim: #c48a24;
+  --color-accent-muted: rgba(230,163,54,0.12);
+  --color-accent-glow: rgba(230,163,54,0.06);
+
+  --color-text-primary: #f5f5f0;
+  --color-text-secondary: #8a8a80;
+  --color-text-muted: #4a4a44;
+
+  --color-border-dim: rgba(255,255,255,0.07);
+  --color-border-strong: rgba(255,255,255,0.12);
+  --color-border-accent: rgba(230,163,54,0.3);
+  
+  --color-semantic-purple: #a78bfa;
+  --color-semantic-slate: #94a3b8;
+}
+
+body {
+  background-color: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar to match dark premium theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-bg-subtle);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-strong);
+}
+
+/* Base heading styles mapping to font-heading */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+}
+
+/* Prevent inputs from zooming on mobile iOS */
+input, textarea, select {
+  font-size: 16px;
+}
+@media (min-width: 768px) {
+  input, textarea, select {
+    font-size: 14px;
+  }
+}
