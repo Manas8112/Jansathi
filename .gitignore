@@ -43,3 +43,13 @@ ENV/
 # OS
 .DS_Store
 Thumbs.db
+
+
+
+
+
+checkpoint-*/
+
+
+backend/models/intent_classifier/checkpoint-*/
+frontend/node_modules/

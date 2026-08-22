@@ -1,20 +1,92 @@
 [
   {
-    "title": "Right to Information Act, 2005",
-    "type": "law",
-    "source": "https://rti.gov.in/rti-act.pdf",
-    "text": "The Right to Information Act, 2005 (RTI) is an act of the Parliament of India to provide for setting out the practical regime of right to information for citizens and replaces the erstwhile Freedom of information Act, 2002. Under the provisions of the Act, any citizen of India may request information from a 'public authority' (a body of Government or 'instrumentality of State') which is required to reply expeditiously or within thirty days. The Act also requires every public authority to computerise their records for wide dissemination and to proactively certain categories of information so that the citizens need minimum recourse to request for information formally."
+    "title": "Right to Information Act, 2005 - Section 6",
+    "type": "bare_act",
+    "source": "rti.gov.in",
+    "text": "Section 6(1): A person, who desires to obtain any information under this Act, shall make a request in writing or through electronic means in English or Hindi or in the official language of the area in which the application is being made, accompanying such fee as may be prescribed, to the Central Public Information Officer or State Public Information Officer, as the case may be, of the concerned public authority; (b) the Central Assistant Public Information Officer or State Assistant Public Information Officer, as the case may be, specifying the particulars of the information sought by him or her."
   },
   {
-    "title": "Consumer Protection Act, 2019",
-    "type": "law",
-    "source": "https://consumeraffairs.nic.in/",
-    "text": "The Consumer Protection Act, 2019 replaces the Consumer Protection Act, 1986. It provides for the protection of the interests of consumers and for the said purpose, to establish authorities for timely and effective administration and settlement of consumers' disputes. The Act recognizes six consumer rights: Right to Safety, Right to be Informed, Right to Choose, Right to be Heard, Right to seek Redressal, and Right to Consumer Education. It also establishes the Central Consumer Protection Authority (CCPA) to promote, protect and enforce the rights of consumers."
+    "title": "Right to Information Act, 2005 - Section 7",
+    "type": "bare_act",
+    "source": "rti.gov.in",
+    "text": "Section 7(1): Subject to the proviso to sub-section (2) of section 5 or the proviso to sub-section (3) of section 6, the Central Public Information Officer or State Public Information Officer, as the case may be, on receipt of a request under section 6 shall, as expeditiously as possible, and in any case within thirty days of the receipt of the request, either provide the information on payment of such fee as may be prescribed or reject the request for any of the reasons specified in sections 8 and 9."
   },
   {
-    "title": "Maternity Benefit Act, 1961",
-    "type": "law",
-    "source": "https://labour.gov.in/",
-    "text": "The Maternity Benefit Act, 1961 protects the employment of women during the time of her maternity and entitles her of a 'maternity benefit' – i.e. full paid absence from work – to take care for her child. The act is applicable to all establishments employing 10 or more persons. The Maternity Benefit (Amendment) Act 2017 has increased the duration of paid maternity leave available for women employees from the existing 12 weeks to 26 weeks."
+    "title": "Right to Information Act, 2005 - Section 19",
+    "type": "bare_act",
+    "source": "rti.gov.in",
+    "text": "Section 19(1): Any person who, does not receive a decision within the time specified in sub-section (1) or clause (a) of sub-section (3) of section 7, or is aggrieved by a decision of the Central Public Information Officer or State Public Information Officer, as the case may be, may within thirty days from the expiry of such period or from the receipt of such a decision prefer an appeal to such officer who is senior in rank to the Central Public Information Officer or State Public Information Officer as the case may be, in each public authority."
+  },
+  {
+    "title": "Consumer Protection Act, 2019 - Section 35",
+    "type": "bare_act",
+    "source": "consumeraffairs.nic.in",
+    "text": "Section 35: Manner in which complaint shall be made. (1) A complaint, in relation to any goods sold or delivered or agreed to be sold or delivered or any service provided or agreed to be provided, may be filed with a District Commission by— (a) the consumer to whom such goods are sold or delivered or agreed to be sold or delivered or such service provided or agreed to be provided; (b) any recognised consumer association whether the consumer to whom the goods sold or delivered or agreed to be sold or delivered or service provided or agreed to be provided is a member of such association or not."
+  },
+  {
+    "title": "Consumer Protection Act, 2019 - Section 2(11)",
+    "type": "bare_act",
+    "source": "consumeraffairs.nic.in",
+    "text": "Section 2(11): 'deficiency' means any fault, imperfection, shortcoming or inadequacy in the quality, nature and manner of performance which is required to be maintained by or under any law for the time being in force or has been undertaken to be performed by a person in pursuance of a contract or otherwise in relation to any service and includes— (i) any act of negligence or omission or commission by such person which causes loss or injury to the consumer; and (ii) deliberate withholding of relevant information by such person to the consumer."
+  },
+  {
+    "title": "Consumer Protection Act, 2019 - E-Commerce Rules",
+    "type": "bare_act",
+    "source": "consumeraffairs.nic.in",
+    "text": "Under the Consumer Protection (E-Commerce) Rules, 2020, e-commerce entities must establish an adequate grievance redressal mechanism and appoint a grievance officer. The grievance officer must acknowledge the receipt of any consumer complaint within 48 hours and redresses the complaint within one month from the date of receipt of the complaint. E-commerce entities cannot impose cancellation charges on consumers cancelling after confirming purchase unless similar charges are also borne by the e-commerce entity, if they cancel the purchase order unilaterally."
+  },
+  {
+    "title": "Real Estate (Regulation and Development) Act, 2016 - Section 18",
+    "type": "bare_act",
+    "source": "mohua.gov.in",
+    "text": "Section 18: Return of amount and compensation. (1) If the promoter fails to complete or is unable to give possession of an apartment, plot or building,— (a) in accordance with the terms of the agreement for sale or, as the case may be, duly completed by the date specified therein; or (b) due to discontinuance of his business as a developer on account of suspension or revocation of the registration under this Act or for any other reason, he shall be liable on demand to the allottees, in case the allottee wishes to withdraw from the project, without prejudice to any other remedy available, to return the amount received by him in respect of that apartment, plot, building, as the case may be, with interest at such rate as may be prescribed in this behalf including compensation in the manner as provided under this Act."
+  },
+  {
+    "title": "Real Estate (Regulation and Development) Act, 2016 - Section 31",
+    "type": "bare_act",
+    "source": "mohua.gov.in",
+    "text": "Section 31: Filing of complaints with the Authority or the adjudicating officer. (1) Any aggrieved person may file a complaint with the Authority or the adjudicating officer, as the case may be, for any violation or contravention of the provisions of this Act or the rules and regulations made thereunder against any promoter allottee or real estate agent, as the case may be."
+  },
+  {
+    "title": "Indian Penal Code, 1860 - Section 420",
+    "type": "bare_act",
+    "source": "indiacode.nic.in",
+    "text": "Section 420: Cheating and dishonestly inducing delivery of property.—Whoever cheats and thereby dishonestly induces the person deceived to deliver any property to any person, or to make, alter or destroy the whole or any part of a valuable security, or anything which is signed or sealed, and which is capable of being converted into a valuable security, shall be punished with imprisonment of either description for a term which may extend to seven years, and shall also be liable to fine."
+  },
+  {
+    "title": "Maternity Benefit Act, 1961 - Section 5",
+    "type": "bare_act",
+    "source": "labour.gov.in",
+    "text": "Section 5: Right to payment of maternity benefit. (1) Subject to the provisions of this Act, every woman shall be entitled to, and her employer shall be liable for, the payment of maternity benefit at the rate of the average daily wage for the period of her actual absence, that is to say, the period immediately preceding the day of her delivery, the actual day of her delivery and any period immediately following that day. (3) The maximum period for which any woman shall be entitled to maternity benefit shall be twenty-six weeks of which not more than eight weeks shall precede the date of her expected delivery."
+  },
+  {
+    "title": "Payment of Wages Act, 1936 - Section 5",
+    "type": "bare_act",
+    "source": "labour.gov.in",
+    "text": "Section 5: Time of payment of wages. (1) The wages of every person employed upon or in (a) any railway, factory or industrial or other establishment upon or in which less than one thousand persons are employed, shall be paid before the expiry of the seventh day, (b) any other railway, factory or industrial or other establishment, shall be paid before the expiry of the tenth day, after the last day of the wage-period in respect of which the wages are payable."
+  },
+  {
+    "title": "Sexual Harassment of Women at Workplace (Prevention, Prohibition and Redressal) Act, 2013",
+    "type": "bare_act",
+    "source": "wcd.nic.in",
+    "text": "Section 4(1): Every employer of a workplace shall, by an order in writing, constitute a Committee to be known as the Internal Complaints Committee. The ICC must consist of a Presiding Officer who shall be a woman employed at a senior level, at least two members from amongst employees committed to the cause of women or who have had experience in social work or have legal knowledge, and one member from amongst non-governmental organizations or associations committed to the cause of women. Section 9 outlines that any aggrieved woman may make a complaint of sexual harassment at workplace to the Internal Committee within three months from the date of incident."
+  },
+  {
+    "title": "Passports Act, 1967 - Delay in Issuance",
+    "type": "legal_precedent",
+    "source": "passportindia.gov.in",
+    "text": "A passport is a fundamental right under Article 21 of the Constitution (Maneka Gandhi vs Union of India). If the Regional Passport Office (RPO) delays the issuance of a passport beyond the stipulated time without providing a valid reason under Section 6 of the Passports Act, 1967, the citizen has the right to file an RTI application under Section 6(1) of the RTI Act to demand the daily progress report of their application and the names of the officers responsible for the delay."
+  },
+  {
+    "title": "Rental Laws & Security Deposit Returns",
+    "type": "legal_precedent",
+    "source": "Model Tenancy Act",
+    "text": "Under standard tenancy laws and the Model Tenancy Act, a landlord is obligated to return the security deposit to the tenant at the time of vacant handover of the premises, after making due deductions for any liability of the tenant. If the landlord arbitrarily withholds the security deposit, the tenant can send a Legal Notice for recovery. If unpaid, the tenant may approach the Rent Court (under new state tenancy acts) or file a Civil Suit for recovery of money under the Code of Civil Procedure."
+  },
+  {
+    "title": "PM Kisan Samman Nidhi Scheme",
+    "type": "government_scheme",
+    "source": "pmkisan.gov.in",
+    "text": "Pradhan Mantri Kisan Samman Nidhi (PM-KISAN) is a central sector scheme that provides an income support of ₹6,000 per year in three equal installments to all land-holding farmer families. The definition of family for the scheme is husband, wife and minor children. State Government and UT administration will identify the farmer families which are eligible for support as per scheme guidelines. Institutional land holders, farmer families holding constitutional posts, serving or retired officers, and professionals like doctors, engineers, and lawyers are excluded from the scheme."
   }
 ]

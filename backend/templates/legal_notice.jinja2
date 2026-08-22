@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: "Times New Roman", Times, serif; margin: 40px; font-size: 14px; line-height: 1.6; }
+        .header { text-align: center; font-weight: bold; margin-bottom: 20px; font-size: 18px; text-decoration: underline; text-transform: uppercase; }
+        .date-right { text-align: right; margin-bottom: 20px; font-weight: bold; }
+        .address-block { margin-bottom: 30px; font-weight: bold; }
+        .subject { font-weight: bold; text-decoration: underline; margin-bottom: 30px; text-align: center; }
+        .content { margin-bottom: 20px; text-align: justify; }
+        .facts { margin-left: 20px; margin-bottom: 20px; text-align: justify; }
+        .signature-block { margin-top: 50px; text-align: right; }
+    </style>
+</head>
+<body>
+    <div class="header">LEGAL NOTICE</div>
+    
+    <div class="date-right">Date: {{ date }}</div>
+    
+    <div class="address-block">
+        To,<br/>
+        {{ addressed_to }}<br/>
+        {{ opposite_party_address | default('[ADDRESS]') }}
+    </div>
+    
+    <div class="content">
+        Sir/Madam,<br/><br/>
+        Under instructions from and on behalf of my client / on my own behalf, <strong>{{ sender_name | default('[SENDER NAME]') }}</strong>, residing at {{ sender_address | default('[SENDER ADDRESS]') }}, I hereby serve upon you the following Legal Notice:
+    </div>
+    
+    <div class="subject">SUBJECT: {{ subject }}</div>
+    
+    <div class="content">
+        That the following are the brief facts giving rise to this Legal Notice:
+    </div>
+    
+    <div class="facts">
+        <ol>
+            {% for fact in facts %}
+            <li>{{ fact }}</li>
+            {% endfor %}
+        </ol>
+    </div>
+    
+    <div class="content">
+        <strong>LEGAL BASIS:</strong><br/>
+        That your aforementioned actions/inactions are in gross violation of the law, specifically:
+    </div>
+    
+    <div class="facts">
+        <ul>
+            {% for law in legal_basis %}
+            <li><strong>Section {{ law.section }} of the {{ law.act_name }}</strong>: {{ law.relevance }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    
+    <div class="content">
+        <strong>DEMAND:</strong><br/>
+        I, therefore, through this Legal Notice, call upon you to <strong>{{ demand }}</strong> within a period of <strong>{{ deadline_days }} days</strong> from the date of receipt of this notice.
+    </div>
+    
+    <div class="content">
+        <strong>CONSEQUENCES OF NON-COMPLIANCE:</strong><br/>
+        Please take notice that in the event of your failure to comply with the aforementioned demand within the stipulated time, I shall be constrained to initiate appropriate legal proceedings against you, including but not limited to <strong>{{ consequence }}</strong>, entirely at your risk, cost, and consequence.
+    </div>
+    
+    <div class="content">
+        A copy of this notice is kept in my office for future reference.
+    </div>
+    
+    <div class="signature-block">
+        Yours faithfully,<br/><br/>
+        _________________________<br/>
+        <strong>{{ sender_name | default('[SENDER NAME]') }}</strong><br/>
+        {{ sender_contact | default('[SENDER CONTACT NO]') }}
+    </div>
+</body>
+</html>

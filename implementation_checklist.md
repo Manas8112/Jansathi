@@ -870,7 +870,7 @@
 
 ## Phase 6: Document Templates
 
-- [ ] **6.1 — Create RTI application template**
+- [x] **6.1 — Create RTI application template**
   - File: `backend/templates/rti_form_a.jinja2`
   - Jinja2 template for a properly formatted RTI application:
     - Addressed to the PIO with designation and department
@@ -881,7 +881,7 @@
     - Date
     - Section 7(1) reference for 30-day timeline
 
-- [ ] **6.2 — Create legal notice template**
+- [x] **6.2 — Create legal notice template**
   - File: `backend/templates/legal_notice.jinja2`
   - Formal legal notice template:
     - LEGAL NOTICE header
@@ -892,7 +892,7 @@
     - Consequence clause (consumer forum / police complaint)
     - Sender details placeholder
 
-- [ ] **6.3 — Create consumer complaint template**
+- [x] **6.3 — Create consumer complaint template**
   - File: `backend/templates/consumer_complaint.jinja2`
   - Consumer forum complaint format:
     - "Before the District Consumer Disputes Redressal Forum, [City]"
@@ -904,7 +904,7 @@
     - Applicable law citations
     - Verification and signature block
 
-- [ ] **6.4 — Create RERA complaint template**
+- [x] **6.4 — Create RERA complaint template**
   - File: `backend/templates/rera_complaint.jinja2`
   - RERA complaint format:
     - Addressed to State RERA Authority
@@ -913,7 +913,7 @@
     - Section 18 reference for compensation
     - Relief sought
 
-- [ ] **6.5 — Create template renderer**
+- [x] **6.5 — Create template renderer**
   - File: `backend/utils/template_renderer.py`
   - Implement `render_template(template_name: str, data: dict) -> str`:
     - Load Jinja2 template from `templates/` directory

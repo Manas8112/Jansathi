@@ -1,7 +1,7 @@
 import os
 import json
 import uuid
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from rag.chroma_store import add_documents
 
 def ingest_json_data(filepath: str, collection_name: str = "jansaathi_legal_kb"):

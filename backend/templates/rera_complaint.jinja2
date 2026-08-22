@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: "Times New Roman", Times, serif; margin: 40px; font-size: 14px; line-height: 1.6; }
+        .header { text-align: center; font-weight: bold; margin-bottom: 30px; font-size: 16px; text-transform: uppercase; }
+        .parties { margin-bottom: 30px; }
+        .vs { text-align: center; font-weight: bold; margin: 15px 0; }
+        .subject { font-weight: bold; text-decoration: underline; margin-bottom: 20px; text-align: center; }
+        .section-title { font-weight: bold; margin-top: 20px; margin-bottom: 10px; }
+        .facts { margin-bottom: 30px; }
+        .facts ol { margin-top: 5px; }
+        .prayer { margin-bottom: 40px; }
+        .signature-block { margin-top: 50px; text-align: right; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        BEFORE THE REAL ESTATE REGULATORY AUTHORITY (RERA)<br/>
+        AT {{ state | default('[STATE]') }}
+    </div>
+    
+    <div class="parties">
+        <strong>{{ complainant_name | default('[COMPLAINANT NAME]') }}</strong><br/>
+        {{ complainant_address | default('[COMPLAINANT ADDRESS]') }}<br/>
+        ... Complainant
+    </div>
+    
+    <div class="vs">VERSUS</div>
+    
+    <div class="parties">
+        <strong>{{ builder_name | default('[PROMOTER/BUILDER NAME]') }}</strong><br/>
+        {{ builder_address | default('[PROMOTER ADDRESS]') }}<br/>
+        ... Respondent
+    </div>
+    
+    <div class="subject">
+        COMPLAINT UNDER SECTION 31 OF THE REAL ESTATE (REGULATION AND DEVELOPMENT) ACT, 2016
+    </div>
+    
+    <div class="section-title">1. PROJECT DETAILS:</div>
+    <div class="facts">
+        <ul>
+            <li>Project Name: {{ project_name | default('[PROJECT NAME]') }}</li>
+            <li>RERA Registration No: {{ rera_reg_no | default('[REGISTRATION NUMBER]') }}</li>
+            <li>Apartment/Unit No: {{ unit_no | default('[UNIT NUMBER]') }}</li>
+        </ul>
+    </div>
+    
+    <div class="section-title">2. FACTS OF THE COMPLAINT:</div>
+    <div class="facts">
+        <ol>
+            {% for fact in facts %}
+            <li>{{ fact }}</li>
+            {% endfor %}
+        </ol>
+    </div>
+    
+    <div class="section-title">3. VIOLATION OF THE ACT:</div>
+    <div class="facts">
+        The Respondent has clearly violated the provisions of the RERA Act, 2016, specifically Section 18 by failing to deliver possession of the apartment in accordance with the terms of the Agreement for Sale.
+    </div>
+    
+    <div class="section-title">4. RELIEF SOUGHT:</div>
+    <div class="prayer">
+        It is, therefore, most respectfully prayed that this Hon'ble Authority may graciously be pleased to pass an order directing the Respondent to:
+        <ol>
+            {% for relief in reliefs %}
+            <li>{{ relief }}</li>
+            {% endfor %}
+            <li>Award the costs of the present complaint in favor of the Complainant.</li>
+        </ol>
+    </div>
+    
+    <div class="signature-block">
+        <strong>COMPLAINANT</strong><br/>
+        (Signature)<br/>
+        Date: {{ date }}
+    </div>
+</body>
+</html>

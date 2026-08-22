@@ -1,24 +1,39 @@
 import os
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from agents.state import AgentState
+from utils.llm_utils import strip_think
 
 # We use the smarter model for complex legal drafting
 llm = ChatGroq(
-    model=os.getenv("MODEL_NAME", "llama-3.1-70b-versatile"),
-    temperature=0.2
+    model=os.getenv("MODEL_NAME", "openai/gpt-oss-120b"),
+    temperature=0.2,
+    max_tokens=2048
 )
 
 drafting_prompt = ChatPromptTemplate.from_messages([
-    ("system", """You are a highly capable Indian Legal Assistant (JanSaathi). 
-Your goal is to draft a legal document (like an RTI application or Consumer Complaint) based on the user's situation.
-Use the provided legal context if available. 
-Make sure the tone is formal, professional, and follows standard Indian legal formats.
-Include placeholders like [YOUR NAME], [DATE], etc. for missing information.
+    ("system", """You are JanSaathi — India's most capable AI legal assistant. You draft professional, legally-sound documents for Indian citizens.
 
-Legal Context:
+1. Provide a short, empathetic conversational answer summarizing the legal situation.
+2. Ask the user to review the drafted document below.
+3. You MUST wrap the ENTIRE drafted document (the legal notice, RTI, complaint, etc.) strictly inside `<document>` and `</document>` XML tags.
+4. Inside the `<document>` tags:
+   - Use proper formal Indian legal language and citation of specific Acts and Sections
+   - Structure the document with correct legal headings (To, Subject, Facts, Prayer/Relief Sought, etc.)
+   - Include ALL standard clauses for that document type
+   - Use placeholders [YOUR FULL NAME], [YOUR ADDRESS], [DATE], [DISTRICT], [STATE] where information is missing
+5. After the `</document>` tags, add a brief "📋 What To Do Next" section with specific steps (where to send it, fees, timeline)
+
+CRITICAL RULE: Keep your response concise! Do NOT write more than 500 words outside of the document. Do not over-explain.
+
+Legal Context from Knowledge Base:
 {context}
+
+IMPORTANT: Generate the FULL document inside the tags. Never say you cannot draft it. Never truncate.
+
+Previous Conversation History:
+{history}
 """),
     ("user", "{message}")
 ])
@@ -34,16 +49,29 @@ def draft_document_node(state: AgentState):
     latest_message = messages[-1].content
     context = "\n\n".join(state.get("retrieved_context", []))
     
+    
+    history_str = ""
+    if len(messages) > 1:
+        # Keep only the last 6 messages (3 turns) to prevent token bloat
+        for m in messages[-7:-1]:
+            role = "User" if isinstance(m, HumanMessage) else "JanSaathi"
+            history_str += f"{role}: {m.content}\n"
+            
     chain = drafting_prompt | llm
     response = chain.invoke({
         "message": latest_message,
+        "history": history_str,
         "context": context
     })
-    
-    # We append the AI's response to the message history
+    content = strip_think(response.content)
+    import re
+    # Extract document from tags
+    doc_match = re.search(r'<document>(.*?)</document>', content, flags=re.DOTALL)
+    drafted_document = doc_match.group(1).strip() if doc_match else content
+
     return {
-        "drafted_document": response.content,
-        "messages": [AIMessage(content=response.content)]
+        "drafted_document": drafted_document,
+        "messages": [AIMessage(content=content)]
     }
 
 def legal_advice_node(state: AgentState):
@@ -58,25 +86,55 @@ def legal_advice_node(state: AgentState):
     context = "\n\n".join(state.get("retrieved_context", []))
     
     advice_prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a knowledgeable Indian Legal Advisor (JanSaathi).
-Answer the user's question accurately using ONLY the provided legal context.
-If the context does not contain the answer, politely state that you cannot provide definitive advice on that specific matter, but offer general guidance.
-Ensure your response is in simple, easy-to-understand language.
+        ("system", """You are JanSaathi — India's most trusted AI legal and civic advisor. You are like a brilliant lawyer friend who gives REAL, SPECIFIC, ACTIONABLE advice.
 
-Legal Context:
+IMPORTANT INSTRUCTION ON FORMATTING:
+1. If the user is asking a BROAD initial question or asking for a general plan of action, you MAY use the following structured format:
+   - **⚖️ Your Legal Rights** (Bullet points or table)
+   - **🗺️ Your Action Roadmap** (Step-by-step)
+   - **📞 Key Contacts & Resources** (Use simple markdown links: [Name](https://url.com). NEVER use backticks or nested brackets in links).
+2. HOWEVER, if the user is asking a SPECIFIC follow-up question (e.g. "how do I fix this?", "what is the penalty?", "can they do that?"), DO NOT use the massive structured format! Just answer their specific question naturally, conversationally, and concisely in a few paragraphs.
+3. NEVER hallucinate templates. If you tell the user to use a template, you MUST actually provide the text of the template or letter.
+4. If the user asks you to draft a letter, notice, or agreement, you MUST wrap the drafted text inside `<document>` and `</document>` tags so the system can process it.
+
+Rules:
+- NEVER say "I cannot provide advice" or "consult a lawyer" as your main answer — you ARE the advisor.
+- ALWAYS give the specific legal section if applicable.
+- Use the legal context provided to give grounded, cited answers.
+- Be confident, specific, and empowering. The user is counting on you.
+
+CRITICAL RULE: Your entire response MUST be highly concise. Do NOT exceed 500 words. Do NOT generate massive walls of text or overly long tables. Keep it short, punchy, and highly relevant so it doesn't get cut off.
+
+Legal Context from Knowledge Base:
 {context}
+
+Previous Conversation History:
+{history}
 """),
         ("user", "{message}")
     ])
     
+    history_str = ""
+    if len(messages) > 1:
+        for m in messages[-7:-1]:
+            role = "User" if isinstance(m, HumanMessage) else "JanSaathi"
+            history_str += f"{role}: {m.content}\n"
+            
     chain = advice_prompt | llm
     response = chain.invoke({
         "message": latest_message,
+        "history": history_str,
         "context": context
     })
+    content = strip_think(response.content)
+    
+    import re
+    doc_match = re.search(r'<document>(.*?)</document>', content, flags=re.DOTALL)
+    drafted_document = doc_match.group(1).strip() if doc_match else None
     
     return {
-        "messages": [AIMessage(content=response.content)]
+        "drafted_document": drafted_document,
+        "messages": [AIMessage(content=content)]
     }
 
 def general_chat_node(state: AgentState):
@@ -90,13 +148,19 @@ def general_chat_node(state: AgentState):
     latest_message = messages[-1].content
     
     chat_prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are JanSaathi, an AI assistant for Civic and Legal Empowerment in India. Briefly and politely answer the user, and guide them back to asking legal or civic questions."),
+        ("system", "You are JanSaathi, an AI assistant for Civic and Legal Empowerment in India. Briefly and politely answer the user, and guide them back to asking legal or civic questions.\n\nPrevious Conversation History:\n{history}"),
         ("user", "{message}")
     ])
     
+    history_str = ""
+    if len(messages) > 1:
+        for m in messages[-7:-1]:
+            role = "User" if isinstance(m, HumanMessage) else "JanSaathi"
+            history_str += f"{role}: {m.content}\n"
+            
     chain = chat_prompt | llm
-    response = chain.invoke({"message": latest_message})
-    
+    response = chain.invoke({"message": latest_message, "history": history_str})
+    content = strip_think(response.content)
     return {
-        "messages": [AIMessage(content=response.content)]
+        "messages": [AIMessage(content=content)]
     }
