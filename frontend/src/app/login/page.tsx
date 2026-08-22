@@ -52,11 +52,11 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-black p-4 font-sans selection:bg-white selection:text-black">
       <div className="w-full max-w-[400px] space-y-8 rounded-lg bg-black p-10 border border-[#1a1a1a]">
         <div className="text-center space-y-2">
-          <h2 className="text-2xl font-semibold tracking-tight text-white">
+          <h2 className="text-3xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-[#888]">
             JanSaathi
           </h2>
-          <p className="text-sm text-[#666]">
-            Enter your details to continue
+          <p className="text-sm text-[#888] font-medium">
+            India's AI Legal & Civic Advisor
           </p>
         </div>
 
@@ -153,28 +153,6 @@ export default function LoginPage() {
             </button>
           </div>
         </form>
-
-        <div className="mt-6">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-[#2a2a3d]" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="bg-[#1a1a2e] px-2 text-[#8888a0]">
-                Or continue with
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-6">
-            <button
-              type="button"
-              className="flex w-full items-center justify-center gap-3 rounded border border-[#222] bg-black py-2.5 px-4 text-sm font-medium text-[#ccc] hover:bg-[#111] hover:text-white transition-colors"
-            >
-              <span>Continue with Google</span>
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

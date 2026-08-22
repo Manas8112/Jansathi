@@ -6,7 +6,7 @@ import { UserMenu } from "@/components/UserMenu";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
-import { Paperclip, Send, Terminal, User as UserIcon } from "lucide-react";
+import { Paperclip, Send, Terminal, User as UserIcon, Trash2 } from "lucide-react";
 import Link from "next/link";
 import Cookies from "js-cookie";
 
@@ -78,6 +78,27 @@ export default function ChatPage() {
   const startNewChat = () => {
     setMessages([]);
     setCurrentConversationId(null);
+  };
+
+  const deleteConversation = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (!confirm("Are you sure you want to delete this chat?")) return;
+    
+    try {
+      const token = Cookies.get("token");
+      const res = await fetch(`http://127.0.0.1:8000/api/chat/conversations/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) {
+        if (currentConversationId === id) {
+          startNewChat();
+        }
+        fetchConversations();
+      }
+    } catch (e) {
+      console.error("Failed to delete chat", e);
+    }
   };
 
   // Cycle loading status text
@@ -224,26 +245,36 @@ export default function ChatPage() {
             ) : (
               <div className="space-y-1">
                 {conversations.map((conv) => (
-                  <button
-                    key={conv.id}
-                    onClick={() => loadConversation(conv.id)}
-                    className={`w-full text-left px-3 py-2.5 rounded text-sm truncate transition-colors ${currentConversationId === conv.id ? 'bg-[#222] text-white' : 'text-[#888] hover:bg-[#111] hover:text-white'}`}
-                  >
-                    {conv.title || "New Chat"}
-                  </button>
+                  <div key={conv.id} className={`flex items-center justify-between w-full rounded transition-colors group ${currentConversationId === conv.id ? 'bg-[#222] text-white' : 'text-[#888] hover:bg-[#111] hover:text-white'}`}>
+                    <button
+                      onClick={() => loadConversation(conv.id)}
+                      className="flex-1 text-left px-3 py-2.5 text-sm truncate"
+                    >
+                      {conv.title || "New Chat"}
+                    </button>
+                    <button 
+                      onClick={(e) => deleteConversation(e, conv.id)}
+                      className="p-2 opacity-0 group-hover:opacity-100 hover:text-red-400 transition-opacity"
+                      title="Delete chat"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 ))}
               </div>
             )}
           </div>
           
-          <div className="mb-6">
+          <div className="mb-4">
             <Link href="/dashboard" className="flex items-center gap-3 w-full px-4 py-3 bg-black hover:bg-[#111] border border-[#222] rounded text-white transition-colors cursor-pointer">
               <span className="text-lg">📄</span>
               <span className="font-medium text-sm">My Documents</span>
             </Link>
           </div>
           
-          <UserMenu />
+          <div className="mt-auto pb-4">
+            <UserMenu />
+          </div>
         </div>
 
         {/* Main Chat Area */}

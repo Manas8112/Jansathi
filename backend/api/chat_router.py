@@ -58,8 +58,23 @@ async def get_conversation_messages(
     messages = msg_result.scalars().all()
     return [
         {"role": ("user" if m.role == "human" else "ai"), "content": m.content}
-        for m in messages
     ]
+
+@router.delete("/conversations/{conv_id}")
+async def delete_conversation(
+    conv_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Delete a specific conversation."""
+    result = await db.execute(select(Conversation).where(Conversation.id == conv_id, Conversation.user_id == current_user.id))
+    conv = result.scalar_one_or_none()
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+        
+    await db.delete(conv)
+    await db.commit()
+    return {"status": "success", "message": "Conversation deleted"}
 
 @router.post("/", response_model=ChatResponse)
 async def chat(
