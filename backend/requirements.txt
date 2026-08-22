@@ -15,7 +15,7 @@ transformers
 torch>=2.0.0
 datasets
 networkx
-pydantic
+pydantic[email]
 pydantic-settings
 pymupdf
 jinja2
