@@ -58,6 +58,7 @@ async def get_conversation_messages(
     messages = msg_result.scalars().all()
     return [
         {"role": ("user" if m.role == "human" else "ai"), "content": m.content}
+        for m in messages
     ]
 
 @router.delete("/conversations/{conv_id}")

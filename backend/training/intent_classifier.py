@@ -84,7 +84,7 @@ def train_model():
     # Using small epochs/batch size for quick hackathon iteration
     training_args = TrainingArguments(
         output_dir=MODEL_DIR,
-        num_train_epochs=3,              # 3 epochs is usually enough to see learning
+        num_train_epochs=4,              # Increased to 4 epochs for better accuracy on larger dataset
         per_device_train_batch_size=8,
         per_device_eval_batch_size=16,
         warmup_steps=100,

@@ -63,9 +63,10 @@ graph TD
 The first node in the graph classifies the user's message into one of six categories: `RTI`, `Complaint`, `Draft Document`, `Legal Advice`, `Scheme Info`, or `General`.
 
 **How it works:**
-- A `ChatPromptTemplate` sends the user message + the last 4 conversation turns (truncated to 300 chars each to avoid token bloat) to a fast LLM.
-- The LLM returns a single category string.
-- Based on the category, the `route_after_intent()` function in `graph.py` selects the next edge: non-general intents go to `knowledge_graph` node; general intents go directly to `general_chat` and bypass all legal processing.
+- **Local Fine-Tuned Model:** The system natively uses a `law-ai/InLegalBERT` transformer model fine-tuned on a custom dataset of 300+ diverse legal intents.
+- **Training Data (`intent_training.jsonl`):** We expanded our initial 15-sample dataset to over 300 unique, hand-crafted queries covering RTI applications, consumer complaints, legal notice drafting, and government scheme inquiries.
+- **Inference & Fallback:** The local model (`model.safetensors` - 437MB) runs entirely offline with zero latency. If the model is missing or fails, it gracefully falls back to a fast LLM (Groq) using a structured prompt with the last 4 conversation turns.
+- Based on the predicted category, the `route_after_intent()` function in `graph.py` selects the next edge (e.g., non-general intents go to the `knowledge_graph` node).
 
 **Why not just use the main LLM for everything?** Routing through a cheap, fast model (temperature=0.0) saves tokens and latency. The expensive model is reserved only for the Drafter and Advisor nodes where quality matters.
 
@@ -209,6 +210,9 @@ We defined strict Pydantic models to validate structured outputs:
 git clone https://github.com/Manas8112/Jansathi.git
 cd Jansathi
 
+# Copy the pre-configured environment file (API keys included)
+cp backend/.env.example backend/.env
+
 # Automated setup (Windows)
 .\setup.ps1
 
@@ -221,6 +225,8 @@ uvicorn main:app --reload
 cd frontend
 npm run dev
 ```
+
+The app will be live at `http://localhost:3000` (frontend) and `http://localhost:8000` (backend API).
 
 ---
 

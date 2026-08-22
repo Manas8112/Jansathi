@@ -47,46 +47,93 @@ function cleanContent(text: string) {
 async function downloadPDF(doc: Document) {
   const cfg = getDocConfig(doc.doc_type);
   const clean = cleanContent(doc.content);
-  // Replace AI placeholders like [YOUR FULL NAME], [Name of Municipal Corporation] with printable blank lines
-  // The (?!\() negative lookahead ensures we don't accidentally break Markdown links like [Link](/path)
+  // Replace AI placeholders like [YOUR FULL NAME] with printable blank lines
   const printableContent = clean.replace(/\[[^\]]+\](?!\()/g, '_________________________');
-  // Using Promise.resolve since marked might be sync or async depending on config
   const htmlContent = await Promise.resolve(marked.parse(printableContent));
   
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>${doc.title}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${doc.title} - JanSaathi Document</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700&family=Noto+Sans:wght@400;600&display=swap');
   @page { size: A4; margin: 20mm; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Noto Serif', serif; background: #fff; color: #000; padding: 0; font-size: 11pt; line-height: 1.5; }
-  .page { max-width: 100%; margin: 0; padding: 0; }
-  .header { border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
-  .header-top { display: flex; justify-content: space-between; align-items: flex-start; }
-  .app-name { font-family: 'Noto Sans', sans-serif; font-size: 9pt; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 1px; }
-  .doc-type-badge { font-family: 'Noto Sans', sans-serif; font-size: 8pt; font-weight: 600; color: #000; border: 1px solid #000; padding: 2px 6px; text-transform: uppercase; }
-  .title { font-size: 16pt; font-weight: 700; margin-top: 10px; line-height: 1.2; text-align: center; }
-  .meta { font-family: 'Noto Sans', sans-serif; font-size: 9pt; color: #555; margin-top: 5px; text-align: center; }
   
-  .content { line-height: 1.6; font-size: 11pt; }
-  .content p { margin-bottom: 12pt; text-align: justify; }
-  .content h1, .content h2 { font-family: 'Noto Sans', sans-serif; margin: 18pt 0 10pt; font-size: 13pt; color: #000; }
-  .content h3 { font-family: 'Noto Sans', sans-serif; margin: 14pt 0 8pt; font-size: 11pt; color: #000; font-weight: bold; }
-  .content ul, .content ol { margin-bottom: 12pt; padding-left: 20pt; }
-  .content li { margin-bottom: 4pt; }
+  /* Screen Viewer Styles */
+  body { 
+    background: #e5e7eb; 
+    display: flex; 
+    justify-content: center; 
+    padding: 40px 20px; 
+    font-family: 'Noto Serif', serif;
+  }
+  
+  .page { 
+    background: #fff; 
+    width: 210mm; /* A4 width */
+    min-height: 297mm; /* A4 height */
+    padding: 25mm 20mm; 
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    border-radius: 2px;
+    font-size: 12pt; 
+    color: #000;
+    line-height: 1.6;
+    position: relative;
+  }
+
+  .print-btn {
+    position: fixed;
+    top: 25px;
+    right: 25px;
+    background: #000;
+    color: #fff;
+    border: none;
+    padding: 12px 24px;
+    font-family: 'Noto Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    transition: transform 0.1s, background 0.2s;
+    z-index: 1000;
+  }
+  .print-btn:hover { background: #333; transform: translateY(-1px); }
+  .print-btn:active { transform: translateY(1px); }
+
+  /* Document Content Styles */
+  .header { border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 25px; }
+  .header-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .app-name { font-family: 'Noto Sans', sans-serif; font-size: 10pt; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 1px; }
+  .doc-type-badge { font-family: 'Noto Sans', sans-serif; font-size: 9pt; font-weight: 600; color: #000; border: 1px solid #000; padding: 3px 8px; text-transform: uppercase; }
+  .title { font-size: 18pt; font-weight: 700; margin-top: 15px; line-height: 1.3; text-align: center; }
+  .meta { font-family: 'Noto Sans', sans-serif; font-size: 10pt; color: #666; margin-top: 8px; text-align: center; }
+  
+  .content p { margin-bottom: 14pt; text-align: justify; }
+  .content h1, .content h2 { font-family: 'Noto Sans', sans-serif; margin: 20pt 0 12pt; font-size: 14pt; color: #000; }
+  .content h3 { font-family: 'Noto Sans', sans-serif; margin: 16pt 0 10pt; font-size: 12pt; color: #000; font-weight: bold; }
+  .content ul, .content ol { margin-bottom: 14pt; padding-left: 24pt; }
+  .content li { margin-bottom: 5pt; }
   .content strong { font-weight: bold; }
-  .content table { width: 100%; border-collapse: collapse; margin-bottom: 12pt; font-size: 10pt; }
-  .content th, .content td { border: 1px solid #ccc; padding: 6pt; text-align: left; }
+  .content table { width: 100%; border-collapse: collapse; margin-bottom: 14pt; font-size: 11pt; }
+  .content th, .content td { border: 1px solid #ccc; padding: 8pt; text-align: left; }
   .content th { background-color: #f9f9f9; font-family: 'Noto Sans', sans-serif; }
 
-  .footer { margin-top: 40px; padding-top: 10px; border-top: 1px solid #000; font-family: 'Noto Sans', sans-serif; font-size: 8pt; color: #555; display: flex; justify-content: space-between; }
-  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+  .footer { margin-top: 50px; padding-top: 15px; border-top: 1px solid #000; font-family: 'Noto Sans', sans-serif; font-size: 9pt; color: #666; display: flex; justify-content: space-between; }
+  
+  /* Print Specific Styles */
+  @media print { 
+    body { background: #fff; padding: 0; display: block; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .page { box-shadow: none; width: 100%; min-height: 100%; padding: 0; border-radius: 0; }
+    .print-btn { display: none; }
+  }
 </style>
 </head>
 <body>
+<button class="print-btn" onclick="window.print()">🖨️ Print / Save PDF</button>
 <div class="page">
   <div class="header">
     <div class="header-top">
@@ -110,10 +157,6 @@ async function downloadPDF(doc: Document) {
     printWindow.document.write(html);
     printWindow.document.close();
     printWindow.focus();
-    alert("To save this document, choose 'Save as PDF' in the destination dropdown of the print window.");
-    setTimeout(() => {
-      printWindow.print();
-    }, 250);
   }
 }
 
