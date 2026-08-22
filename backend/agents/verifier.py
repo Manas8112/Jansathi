@@ -109,6 +109,11 @@ def verifier_node(state: AgentState) -> dict:
     last_ai_response = ai_messages[-1].content
     last_ai_response = _strip_think(last_ai_response)
 
+    # Skip verification if the AI successfully triggered a domain guardrail refusal
+    if "I can only assist you with matters related to Indian law" in last_ai_response or "I cannot answer questions outside of the legal and civic domain" in last_ai_response:
+        print("[Verifier] Skipping verification because response is a valid guardrail refusal.")
+        return {}
+
     # Find last user message
     from langchain_core.messages import HumanMessage
     human_messages = [m for m in messages if isinstance(m, HumanMessage)]
