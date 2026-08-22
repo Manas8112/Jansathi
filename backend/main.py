@@ -1,8 +1,5 @@
 from dotenv import load_dotenv
-load_dotenv()
-
-from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(encoding="utf-8-sig")
 
 from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Request
 from fastapi.middleware.cors import CORSMiddleware
