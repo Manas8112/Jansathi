@@ -18,6 +18,7 @@ networkx
 pydantic[email]
 pydantic-settings
 pymupdf
+PyPDF2
 jinja2
 weasyprint
 websockets
