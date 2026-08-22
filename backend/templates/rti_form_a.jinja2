@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: "Times New Roman", Times, serif; margin: 40px; font-size: 14px; }
+        .header { text-align: center; font-weight: bold; margin-bottom: 30px; font-size: 16px; }
+        .date-right { text-align: right; margin-bottom: 20px; }
+        .address-block { margin-bottom: 30px; }
+        .subject { font-weight: bold; text-decoration: underline; margin-bottom: 20px; }
+        .content { margin-bottom: 30px; line-height: 1.6; }
+        .points { margin-left: 20px; margin-bottom: 30px; }
+        .footer { margin-top: 50px; }
+        .signature { margin-top: 50px; text-align: right; }
+    </style>
+</head>
+<body>
+    <div class="header">FORM A<br/>Application under Sec 6(1) of the Right to Information Act, 2005</div>
+    
+    <div class="date-right">Date: {{ date }}</div>
+    
+    <div class="address-block">
+        To,<br/>
+        The Public Information Officer (PIO)<br/>
+        {{ department }}<br/>
+        {{ addressed_to }}
+    </div>
+    
+    <div class="subject">Subject: {{ subject }} under the RTI Act, 2005.</div>
+    
+    <div class="content">
+        Respected Sir/Madam,<br/><br/>
+        Under Section 6(1) of the Right to Information Act, 2005, please provide me with the following information pertaining to your department:
+    </div>
+    
+    <div class="points">
+        <ol>
+            {% for point in information_points %}
+            <li>{{ point }}</li>
+            {% endfor %}
+        </ol>
+    </div>
+    
+    <div class="content">
+        <strong>Application Fee Details:</strong><br/>
+        {{ fee_info }}<br/><br/>
+        
+        As per Section 7(1) of the RTI Act, 2005, I request you to provide the information within 30 days. If the information does not pertain to your department, I request you to forward it to the concerned PIO under Section 6(3) of the Act.
+    </div>
+    
+    <div class="signature">
+        Yours faithfully,<br/><br/>
+        _________________________<br/>
+        {{ applicant_placeholder }}<br/>
+        (Signature of Applicant)
+    </div>
+</body>
+</html>

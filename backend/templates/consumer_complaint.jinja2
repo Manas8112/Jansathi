@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: "Times New Roman", Times, serif; margin: 40px; font-size: 14px; line-height: 1.6; }
+        .header { text-align: center; font-weight: bold; margin-bottom: 30px; font-size: 16px; text-transform: uppercase; }
+        .parties { margin-bottom: 30px; }
+        .vs { text-align: center; font-weight: bold; margin: 15px 0; }
+        .subject { font-weight: bold; text-decoration: underline; margin-bottom: 20px; text-align: center; }
+        .section-title { font-weight: bold; margin-top: 20px; margin-bottom: 10px; }
+        .facts { margin-bottom: 30px; }
+        .facts ol { margin-top: 5px; }
+        .prayer { margin-bottom: 40px; }
+        .verification { margin-top: 50px; }
+        .signature-block { margin-top: 50px; text-align: right; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        BEFORE THE DISTRICT CONSUMER DISPUTES REDRESSAL COMMISSION<br/>
+        AT {{ city | default('[CITY NAME]') }}
+    </div>
+    
+    <div class="parties">
+        <strong>{{ complainant_name | default('[COMPLAINANT NAME]') }}</strong><br/>
+        {{ complainant_address | default('[COMPLAINANT ADDRESS]') }}<br/>
+        ... Complainant
+    </div>
+    
+    <div class="vs">VERSUS</div>
+    
+    <div class="parties">
+        <strong>{{ opposite_party_name | default('[OPPOSITE PARTY NAME]') }}</strong><br/>
+        {{ opposite_party_address | default('[OPPOSITE PARTY ADDRESS]') }}<br/>
+        ... Opposite Party
+    </div>
+    
+    <div class="subject">
+        COMPLAINT UNDER SECTION 35 OF THE CONSUMER PROTECTION ACT, 2019
+    </div>
+    
+    <div>
+        <strong>RESPECTFULLY SHOWETH:</strong><br/>
+        The Complainant abovenamed begs to state as under:
+    </div>
+    
+    <div class="section-title">1. FACTS OF THE CASE:</div>
+    <div class="facts">
+        <ol>
+            {% for fact in facts %}
+            <li>{{ fact }}</li>
+            {% endfor %}
+        </ol>
+    </div>
+    
+    <div class="section-title">2. DEFICIENCY IN SERVICE / UNFAIR TRADE PRACTICE:</div>
+    <div class="facts">
+        <ol>
+            {% for defect in defects %}
+            <li>{{ defect }}</li>
+            {% endfor %}
+        </ol>
+    </div>
+    
+    <div class="section-title">3. PRAYER / RELIEF SOUGHT:</div>
+    <div class="prayer">
+        It is, therefore, most respectfully prayed that this Hon'ble Commission may graciously be pleased to pass an order directing the Opposite Party to:
+        <ol>
+            {% for relief in reliefs %}
+            <li>{{ relief }}</li>
+            {% endfor %}
+            <li>Pass any other order as this Hon'ble Commission may deem fit in the interest of justice.</li>
+        </ol>
+    </div>
+    
+    <div class="signature-block">
+        <strong>COMPLAINANT</strong><br/>
+        (Signature)<br/>
+        Date: {{ date }}<br/>
+        Place: {{ city | default('[CITY]') }}
+    </div>
+    
+    <div class="verification">
+        <strong>VERIFICATION</strong><br/>
+        I, {{ complainant_name | default('[COMPLAINANT NAME]') }}, the Complainant above named, do hereby verify that the contents of paragraphs 1 to 3 are true and correct to the best of my knowledge and belief, and nothing material has been concealed therefrom.<br/><br/>
+        Verified at {{ city | default('[CITY]') }} on this ____ day of ________, 20__.
+    </div>
+    <div class="signature-block">
+        <strong>COMPLAINANT</strong>
+    </div>
+</body>
+</html>

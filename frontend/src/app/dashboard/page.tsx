@@ -1,0 +1,366 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Cookies from 'js-cookie';
+import Link from 'next/link';
+import { UserMenu } from "@/components/UserMenu";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import { marked } from 'marked';
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+
+interface Document {
+  id: string;
+  doc_type: string;
+  title: string;
+  content: string;
+  created_at: string;
+}
+
+const DOC_TYPE_CONFIG: Record<string, { label: string; icon: string }> = {
+  rti: { label: 'RTI Application', icon: '📄' },
+  legal_notice: { label: 'Legal Notice', icon: '⚖️' },
+  consumer_complaint: { label: 'Consumer Complaint', icon: '🛒' },
+  rera_complaint: { label: 'RERA Complaint', icon: '🏠' },
+  legal_advice: { label: 'Legal Advice', icon: '💡' },
+};
+
+function getDocConfig(type: string) {
+  return DOC_TYPE_CONFIG[type] || { label: type, icon: '📋' };
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-IN', {
+    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+}
+
+function cleanContent(text: string) {
+  let cleaned = text.replace(/<br\s*\/?>/gi, '\n');
+  cleaned = cleaned.replace(/(<\/[a-zA-Z0-9_]+>)/g, '$1\n');
+  cleaned = cleaned.replace(/<[^>]*>?/gm, '');
+  return cleaned.trim();
+}
+
+async function downloadPDF(doc: Document) {
+  const cfg = getDocConfig(doc.doc_type);
+  const clean = cleanContent(doc.content);
+  // Replace AI placeholders like [YOUR FULL NAME] with printable blank lines
+  const printableContent = clean.replace(/\[[^\]]+\](?!\()/g, '_________________________');
+  const htmlContent = await Promise.resolve(marked.parse(printableContent));
+  
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${doc.title} - JanSaathi Document</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700&family=Noto+Sans:wght@400;600&display=swap');
+  @page { size: A4; margin: 20mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  /* Screen Viewer Styles */
+  body { 
+    background: #e5e7eb; 
+    display: flex; 
+    justify-content: center; 
+    padding: 40px 20px; 
+    font-family: 'Noto Serif', serif;
+  }
+  
+  .page { 
+    background: #fff; 
+    width: 210mm; /* A4 width */
+    min-height: 297mm; /* A4 height */
+    padding: 25mm 20mm; 
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    border-radius: 2px;
+    font-size: 12pt; 
+    color: #000;
+    line-height: 1.6;
+    position: relative;
+  }
+
+  .print-btn {
+    position: fixed;
+    top: 25px;
+    right: 25px;
+    background: #000;
+    color: #fff;
+    border: none;
+    padding: 12px 24px;
+    font-family: 'Noto Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    transition: transform 0.1s, background 0.2s;
+    z-index: 1000;
+  }
+  .print-btn:hover { background: #333; transform: translateY(-1px); }
+  .print-btn:active { transform: translateY(1px); }
+
+  /* Document Content Styles */
+  .header { border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 25px; }
+  .header-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .app-name { font-family: 'Noto Sans', sans-serif; font-size: 10pt; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 1px; }
+  .doc-type-badge { font-family: 'Noto Sans', sans-serif; font-size: 9pt; font-weight: 600; color: #000; border: 1px solid #000; padding: 3px 8px; text-transform: uppercase; }
+  .title { font-size: 18pt; font-weight: 700; margin-top: 15px; line-height: 1.3; text-align: center; }
+  .meta { font-family: 'Noto Sans', sans-serif; font-size: 10pt; color: #666; margin-top: 8px; text-align: center; }
+  
+  .content p { margin-bottom: 14pt; text-align: justify; }
+  .content h1, .content h2 { font-family: 'Noto Sans', sans-serif; margin: 20pt 0 12pt; font-size: 14pt; color: #000; }
+  .content h3 { font-family: 'Noto Sans', sans-serif; margin: 16pt 0 10pt; font-size: 12pt; color: #000; font-weight: bold; }
+  .content ul, .content ol { margin-bottom: 14pt; padding-left: 24pt; }
+  .content li { margin-bottom: 5pt; }
+  .content strong { font-weight: bold; }
+  .content table { width: 100%; border-collapse: collapse; margin-bottom: 14pt; font-size: 11pt; }
+  .content th, .content td { border: 1px solid #ccc; padding: 8pt; text-align: left; }
+  .content th { background-color: #f9f9f9; font-family: 'Noto Sans', sans-serif; }
+
+  .footer { margin-top: 50px; padding-top: 15px; border-top: 1px solid #000; font-family: 'Noto Sans', sans-serif; font-size: 9pt; color: #666; display: flex; justify-content: space-between; }
+  
+  /* Print Specific Styles */
+  @media print { 
+    body { background: #fff; padding: 0; display: block; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .page { box-shadow: none; width: 100%; min-height: 100%; padding: 0; border-radius: 0; }
+    .print-btn { display: none; }
+  }
+</style>
+</head>
+<body>
+<button class="print-btn" onclick="window.print()">🖨️ Print / Save PDF</button>
+<div class="page">
+  <div class="header">
+    <div class="header-top">
+      <div class="app-name">JanSaathi — Civic & Legal Empowerment</div>
+      <div class="doc-type-badge">${cfg.label}</div>
+    </div>
+    <div class="title">${doc.title}</div>
+    <div class="meta">Generated on ${formatDate(doc.created_at)} &nbsp;|&nbsp; Document ID: ${doc.id.slice(0, 8).toUpperCase()}</div>
+  </div>
+  <div class="content">${htmlContent}</div>
+  <div class="footer">
+    <span>Generated by JanSaathi AI &mdash; jansaathi.in</span>
+    <span>This document is AI-generated. Please verify details before submission.</span>
+  </div>
+</div>
+</body>
+</html>`;
+
+  const printWindow = window.open('', '_blank');
+  if (printWindow) {
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+  }
+}
+
+export default function DashboardPage() {
+  const router = useRouter();
+  const [docs, setDocs] = useState<Document[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [filter, setFilter] = useState<string>('all');
+
+  async function fetchDocs(token?: string) {
+    const t = token || Cookies.get('token');
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/documents/`, {
+        headers: { Authorization: `Bearer ${t}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDocs(data);
+        if (data.length > 0) setSelectedDoc(data[0]);
+      }
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  }
+
+  useEffect(() => {
+    const token = Cookies.get('token');
+    if (!token) { router.push('/login'); return; }
+    fetchDocs(token);
+  }, []);
+
+  async function deleteDoc(id: string) {
+    if (!confirm('Delete this document? This cannot be undone.')) return;
+    setDeleting(id);
+    const token = Cookies.get('token');
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/documents/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setDocs(d => d.filter(x => x.id !== id));
+      if (selectedDoc?.id === id) setSelectedDoc(null);
+    } catch (e) { console.error(e); }
+    finally { setDeleting(null); }
+  }
+
+  const filtered = filter === 'all' ? docs : docs.filter(d => d.doc_type === filter);
+  const docTypeCounts = docs.reduce((acc, d) => { acc[d.doc_type] = (acc[d.doc_type] || 0) + 1; return acc; }, {} as Record<string, number>);
+
+  return (
+    <ProtectedRoute>
+      <div className="flex h-screen bg-black text-white overflow-hidden selection:bg-white selection:text-black">
+        
+        {/* Sidebar (Identical to chat) */}
+        <div className="w-80 bg-black border-r border-[#1a1a1a] p-6 hidden md:flex flex-col">
+          <div className="text-xl font-semibold tracking-tight mb-8 text-white">JanSaathi</div>
+          
+          <div className="flex-1 overflow-y-auto mb-4 scrollbar-thin scrollbar-thumb-[#333] pr-2">
+            <h3 className="text-xs font-semibold text-[#888] uppercase tracking-wider mb-4 sticky top-0 bg-black pt-2 pb-2 z-10">Filter By Type</h3>
+            
+            <div className="space-y-1">
+              <button 
+                onClick={() => setFilter('all')} 
+                className={`w-full flex items-center justify-between px-3 py-2 rounded text-sm transition-colors ${filter === 'all' ? 'bg-[#111] text-white' : 'text-[#888] hover:bg-[#111] hover:text-[#ccc]'}`}
+              >
+                <span>All Documents</span>
+                <span className="bg-[#222] px-1.5 py-0.5 rounded text-[10px] text-[#aaa]">{docs.length}</span>
+              </button>
+              
+              {Object.entries(DOC_TYPE_CONFIG).map(([type, cfg]) => {
+                const count = docTypeCounts[type] || 0;
+                if (!count) return null;
+                return (
+                  <button 
+                    key={type} 
+                    onClick={() => setFilter(type)} 
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded text-sm transition-colors ${filter === type ? 'bg-[#111] text-white' : 'text-[#888] hover:bg-[#111] hover:text-[#ccc]'}`}
+                  >
+                    <span className="flex items-center gap-2"><span className="text-base">{cfg.icon}</span> {cfg.label}</span>
+                    <span className="bg-[#222] px-1.5 py-0.5 rounded text-[10px] text-[#aaa]">{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          
+          <div className="mb-6 space-y-2">
+            <Link href="/chat" className="flex items-center justify-center gap-3 w-full px-4 py-3 bg-white hover:bg-gray-200 border border-white rounded text-black transition-colors cursor-pointer">
+              <span className="font-medium text-sm">+ New Document</span>
+            </Link>
+            <Link href="/chat" className="flex items-center gap-3 w-full px-4 py-3 bg-black hover:bg-[#111] border border-[#222] rounded text-[#ccc] transition-colors cursor-pointer">
+              <span className="text-lg">💬</span>
+              <span className="font-medium text-sm">Chat</span>
+            </Link>
+            <div className="flex items-center gap-3 w-full px-4 py-3 bg-[#0a0a0a] border border-[#333] rounded text-white cursor-default">
+              <span className="text-lg">📄</span>
+              <span className="font-medium text-sm">My Documents</span>
+            </div>
+          </div>
+          
+          <UserMenu />
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col relative bg-black overflow-y-auto scrollbar-thin scrollbar-thumb-[#333] scrollbar-track-transparent">
+          <div className="p-8 md:p-12 max-w-7xl mx-auto w-full">
+            <div className="mb-12">
+              <h1 className="text-3xl font-medium text-white tracking-tight mb-2">My Legal Documents</h1>
+              <p className="text-[#888] text-[15px]">{docs.length} document{docs.length !== 1 ? 's' : ''} saved to your account</p>
+            </div>
+
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-20 text-[#666]">
+                <div className="w-8 h-8 border-2 border-[#222] border-t-white rounded-full animate-spin mb-4" />
+                <p>Loading documents...</p>
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center max-w-sm mx-auto">
+                <div className="text-4xl mb-4">📄</div>
+                <h3 className="text-lg font-medium text-white mb-2">No documents yet</h3>
+                <p className="text-[#666] text-sm mb-6 leading-relaxed">
+                  Go to the chat and ask JanSaathi to draft an RTI application, legal notice, or consumer complaint.
+                </p>
+                <Link href="/chat" className="bg-white text-black px-6 py-2.5 rounded font-medium text-sm hover:bg-gray-200 transition-colors">
+                  Start a conversation
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                
+                {/* Document List */}
+                <div className="lg:col-span-5 flex flex-col gap-4">
+                  {filtered.map(doc => {
+                    const cfg = getDocConfig(doc.doc_type);
+                    const isSelected = selectedDoc?.id === doc.id;
+                    const clean = cleanContent(doc.content);
+                    
+                    return (
+                      <div
+                        key={doc.id}
+                        onClick={() => setSelectedDoc(doc)}
+                        className={`p-5 rounded-lg cursor-pointer transition-all border ${isSelected ? 'bg-[#0a0a0a] border-[#444]' : 'bg-black border-[#222] hover:border-[#333] hover:bg-[#050505]'}`}
+                      >
+                        <div className="flex items-start gap-4">
+                          <div className="text-2xl pt-1 flex-shrink-0">{cfg.icon}</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[10px] font-semibold text-[#666] uppercase tracking-wider mb-1">{cfg.label}</div>
+                            <div className="text-[15px] font-medium text-[#eee] leading-snug mb-1 truncate">{doc.title}</div>
+                            <div className="text-xs text-[#555] mb-3">{formatDate(doc.created_at)}</div>
+                            <div className="text-[13px] text-[#888] line-clamp-2 leading-relaxed">
+                              {clean.slice(0, 120)}...
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Preview Panel */}
+                {selectedDoc && (
+                  <div className="lg:col-span-7 sticky top-8 border border-[#222] bg-[#0a0a0a] rounded-lg overflow-hidden flex flex-col h-[calc(100vh-140px)]">
+                    <div className="p-6 border-b border-[#222] flex justify-between items-start bg-black shrink-0">
+                      <div>
+                        <div className="text-[10px] font-semibold text-[#666] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                          <span>{getDocConfig(selectedDoc.doc_type).icon}</span>
+                          <span>{getDocConfig(selectedDoc.doc_type).label}</span>
+                        </div>
+                        <h2 className="text-lg font-medium text-white mb-1 leading-snug pr-4">{selectedDoc.title}</h2>
+                        <div className="text-xs text-[#555]">{formatDate(selectedDoc.created_at)}</div>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <button 
+                          onClick={() => downloadPDF(selectedDoc)} 
+                          className="bg-white text-black px-4 py-2 rounded text-xs font-medium hover:bg-gray-200 transition-colors flex items-center gap-2"
+                        >
+                          <span>📥</span> PDF
+                        </button>
+                        <button 
+                          onClick={() => deleteDoc(selectedDoc.id)} 
+                          disabled={deleting === selectedDoc.id}
+                          className="bg-transparent border border-[#333] text-[#f87171] hover:bg-[#111] hover:border-[#f87171] px-3 py-2 rounded text-xs font-medium transition-colors disabled:opacity-50"
+                        >
+                          {deleting === selectedDoc.id ? '...' : '🗑️'}
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="p-8 overflow-y-auto flex-1 bg-[#0a0a0a] scrollbar-thin scrollbar-thumb-[#333] scrollbar-track-transparent">
+                      <div className="prose prose-sm prose-invert prose-p:leading-relaxed prose-pre:bg-[#111] prose-pre:border prose-pre:border-[#222] prose-td:border-[#222] prose-th:border-[#222] max-w-none text-[#ccc]">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+                          {cleanContent(selectedDoc.content)}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </ProtectedRoute>
+  );
+}
