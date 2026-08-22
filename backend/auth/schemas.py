@@ -10,8 +10,6 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
-class GoogleLogin(BaseModel):
-    token: str  # Google OAuth token from frontend
 
 class UserResponse(BaseModel):
     id: str
