@@ -1,0 +1,11 @@
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  # We will set this in the Netlify UI to point to Render later
+  NEXT_PUBLIC_API_URL = ""
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
