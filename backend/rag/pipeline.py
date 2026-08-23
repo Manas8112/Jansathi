@@ -13,20 +13,22 @@ class HybridRAGPipeline:
         self.collection = get_collection(collection_name)
         
         # Cross-Encoder for reranking (Wrap in try-except for offline/proxy resilience)
-        try:
-            is_render = os.getenv("RENDER") == "true"
-            if is_render:
-                raise Exception("Running on Render (limited RAM). Local cross-encoder disabled.")
-            # Try offline first
-            self.reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-12-v2', max_length=512, local_files_only=True)
-        except Exception:
+        is_render = os.getenv("RENDER") == "true"
+        if is_render:
+            print("Running on Render (limited RAM). Local cross-encoder disabled.")
+            self.reranker = None
+        else:
             try:
-                # If not cached, try downloading normally
-                print("Local cross-encoder not found. Attempting to download from Hugging Face...")
-                self.reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-12-v2', max_length=512)
-            except Exception as e:
-                print(f"WARNING: Could not load CrossEncoder due to network/proxy issues. Reranking is disabled. Error: {e}")
-                self.reranker = None
+                # Try offline first
+                self.reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-12-v2', max_length=512, local_files_only=True)
+            except Exception:
+                try:
+                    # If not cached, try downloading normally
+                    print("Local cross-encoder not found. Attempting to download from Hugging Face...")
+                    self.reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-12-v2', max_length=512)
+                except Exception as e:
+                    print(f"WARNING: Could not load CrossEncoder due to network/proxy issues. Reranking is disabled. Error: {e}")
+                    self.reranker = None
         
         # LLM for query expansion
         self.llm = ChatGroq(
