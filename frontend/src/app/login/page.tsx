@@ -27,7 +27,8 @@ export default function LoginPage() {
         ? JSON.stringify({ email, password })
         : JSON.stringify({ email, name, password });
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${endpoint}`, {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === "development" ? "http://localhost:8000" : "https://jansathi-ahwr.onrender.com");
+      const res = await fetch(`${API_URL}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body,
