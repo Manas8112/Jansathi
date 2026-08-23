@@ -208,6 +208,21 @@ We defined strict Pydantic models to validate structured outputs:
 
 ---
 
+### 10. Interactive Document Filling & Vision OCR
+
+We have vastly expanded JanSaathi's capabilities to interact with document generation and upload:
+
+**Interactive Blank Template Filling:**
+When the Drafter Agent (`agents/drafter.py`) generates a document with missing placeholders (e.g. `[Your Name]`), it now proactively asks the user if they want those details filled. The Intent Router detects this context, allowing users to simply type their details into the chat, and the AI injects them into the template to produce a ready-to-export final Markdown document.
+
+**Premade Form Handling & OCR Fallback:**
+Users can upload blank government forms or contracts to the chat. 
+- The `api/documents.py` endpoint uses `PyMuPDF` to extract text and analyze the document.
+- **Groq Vision Fallback:** If the uploaded PDF is image-based or scanned, the backend converts the first page into a PNG and securely sends it to **Groq's Llama-3.2-Vision** model. This provides incredibly fast, cloud-based OCR without requiring heavy, server-crashing libraries like Tesseract on the deployment host. 
+- The Analyzer identifies the missing fields, asks the user for them, and returns a cleanly structured Markdown version of the filled form.
+
+---
+
 ## Running Locally
 
 **Prerequisites:** Python 3.10+, Node.js v18+, Git LFS
