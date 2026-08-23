@@ -2,27 +2,15 @@
 
 import { useState, useRef, useEffect } from "react";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { UserMenu } from "@/components/UserMenu";
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
-import { Paperclip, ArrowUp, Menu, X, FolderOpen, Scale, Trash2 } from "lucide-react";
-import Link from "next/link";
 import Cookies from "js-cookie";
 import { useToast } from "@/hooks/useToast";
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
-interface Message {
-  role: "user" | "ai";
-  content: string;
-  intent?: string;
-  timestamp?: Date;
-}
-
-interface Conversation {
-  id: string;
-  title: string;
-  updated_at: string;
-}
+import { ChatSidebar, Conversation } from "@/components/chat/ChatSidebar";
+import { ChatHeader } from "@/components/chat/ChatHeader";
+import { ChatMessageList, Message } from "@/components/chat/ChatMessageList";
+import { ChatInput } from "@/components/chat/ChatInput";
 
 const SUGGESTED_PROMPTS = [
   "Draft an RTI application",
@@ -31,26 +19,20 @@ const SUGGESTED_PROMPTS = [
   "Explain my tenant rights"
 ];
 
-const LOADING_STATUSES = [
-  "Reading your situation…",
-  "Searching legal precedents…",
-  "Checking applicable statutes…",
-  "Drafting your document…"
-];
-
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [loadingStatusIdx, setLoadingStatusIdx] = useState(0);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile sidebar
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false); // Desktop sidebar
+  
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [fetchingSidebar, setFetchingSidebar] = useState(true);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const exportRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -79,21 +61,8 @@ export default function ChatPage() {
     fetchConversations();
   }, []);
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (loading) {
-      interval = setInterval(() => {
-        setLoadingStatusIdx((prev) => (prev + 1) % LOADING_STATUSES.length);
-      }, 2500);
-    } else {
-      setLoadingStatusIdx(0);
-    }
-    return () => clearInterval(interval);
-  }, [loading]);
-
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
-    // Auto-grow textarea
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
@@ -196,7 +165,6 @@ export default function ChatPage() {
       fetchConversations();
     } catch (error: any) {
       toast(error.message || "Failed to send message", "error");
-      // Remove the optimistic user message or let them know it failed. For simplicity, we just toast the error.
     } finally {
       setLoading(false);
     }
@@ -252,287 +220,97 @@ export default function ChatPage() {
     }
   };
 
-  // Render Sidebar Content to be used in both desktop and mobile
-  const sidebarContent = (
-    <div className="flex flex-col h-full bg-[var(--color-bg-surface)]">
-      <div className="p-4 shrink-0 flex items-center justify-between md:mt-2 md:mb-2">
-        <div className="flex items-center gap-2 md:gap-3">
-          <button 
-            className="hidden md:block p-1.5 -ml-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-            onClick={() => setIsSidebarCollapsed(true)}
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-          <div className="font-heading font-semibold text-[20px] text-[var(--color-accent)] tracking-tight px-1">
-            JanSaathi
-          </div>
-        </div>
-        <button className="md:hidden p-1 text-[var(--color-text-muted)]" onClick={() => setIsSidebarOpen(false)}>
-          <X className="w-5 h-5" />
-        </button>
-      </div>
+  const exportToPDF = async () => {
+    if (!exportRef.current) return;
+    if (messages.length === 0) {
+      toast("No messages to export", "info");
+      return;
+    }
+    
+    try {
+      toast("Generating PDF...", "info");
+      const element = exportRef.current;
+      const originalHeight = element.style.height;
+      const originalOverflow = element.style.overflow;
       
-      <div className="px-4 pb-6 shrink-0 mt-2">
-        <button 
-          onClick={startNewChat}
-          className="w-full flex items-center justify-center gap-2 h-[40px] bg-[var(--color-bg-base)] border border-[var(--color-border-dim)] text-[var(--color-accent)] hover:bg-[var(--color-accent-muted)] hover:border-[var(--color-border-accent)] rounded-lg transition-all text-[14px] font-medium shadow-sm"
-        >
-          <span className="text-[18px] leading-none">+</span> New chat
-        </button>
-      </div>
-      
-      <div className="flex-1 overflow-y-auto px-2 pb-4 scrollbar-thin">
-        {fetchingSidebar ? (
-          <div className="px-2 space-y-2 mt-2">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-[36px] w-full rounded flex items-center px-2">
-                <div className="w-full flex flex-col gap-1.5 opacity-50">
-                  <div className="h-2.5 bg-[var(--color-bg-elevated)] rounded-sm w-3/4 animate-pulse"></div>
-                  <div className="h-2 bg-[var(--color-bg-elevated)] rounded-sm w-1/4 animate-pulse" style={{ animationDelay: '100ms' }}></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : conversations.length === 0 ? (
-          <div className="px-4 mt-4 text-[12px] text-[var(--color-text-muted)]">No past conversations.</div>
-        ) : (
-          <div className="space-y-0.5">
-            {conversations.map((conv) => {
-              const isActive = currentConversationId === conv.id;
-              return (
-                <div 
-                  key={conv.id} 
-                  className={`group flex items-center justify-between w-full h-[36px] px-3 rounded transition-colors cursor-pointer ${
-                    isActive 
-                      ? 'bg-[var(--color-accent-muted)] border-l-2 border-[var(--color-accent)] pl-2.5' 
-                      : 'border-l-2 border-transparent hover:bg-[var(--color-bg-elevated)]'
-                  }`}
-                  onClick={() => loadConversation(conv.id)}
-                >
-                  <div className="flex flex-col justify-center w-full min-w-0 pr-2">
-                    <span className={`text-[13px] truncate leading-tight ${isActive ? 'text-[var(--color-text-primary)] font-medium' : 'text-[var(--color-text-secondary)] font-normal group-hover:text-[var(--color-text-primary)]'}`}>
-                      {conv.title || "New Chat"}
-                    </span>
-                  </div>
-                  <button 
-                    onClick={(e) => deleteConversation(e, conv.id)}
-                    className="p-1 shrink-0 opacity-0 group-hover:opacity-100 text-[var(--color-text-muted)] hover:text-[var(--color-semantic-red)] transition-all"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+      // Temporarily expand to prevent cutoff inside scroll container
+      element.style.height = 'max-content';
+      element.style.overflow = 'visible';
+
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: document.documentElement.getAttribute('data-theme') === 'light' ? "#ffffff" : "#0a0a0a",
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight
+      });
+
+      element.style.height = originalHeight;
+      element.style.overflow = originalOverflow;
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'px',
+        format: [canvas.width, canvas.height]
+      });
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      const filename = `JanSaathi_Chat_${new Date().toISOString().split('T')[0]}.pdf`;
+      pdf.save(filename);
+      toast("PDF exported successfully", "success");
+    } catch (e) {
+      console.error(e);
+      toast("Failed to generate PDF", "error");
+    }
+  };
 
   return (
     <ProtectedRoute>
       <div className="flex h-screen bg-[var(--color-bg-base)] text-[var(--color-text-primary)] overflow-hidden selection:bg-[var(--color-accent)] selection:text-[#080808]">
         
-        {/* DESKTOP SIDEBAR */}
-        <div className={`hidden md:block h-full shrink-0 border-r border-[var(--color-border-dim)] z-10 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'w-0 overflow-hidden border-r-0' : 'w-[280px]'}`}>
-          <div className="w-[280px] h-full">
-            {sidebarContent}
-          </div>
-        </div>
-
-        {/* MOBILE SIDEBAR & OVERLAY */}
-        {isSidebarOpen && (
-          <div 
-            className="fixed inset-0 bg-[rgba(0,0,0,0.6)] z-40 md:hidden animate-in fade-in duration-150"
-            onClick={() => setIsSidebarOpen(false)}
-          />
-        )}
-        <div 
-          className={`fixed inset-y-0 left-0 w-[280px] z-50 transform transition-transform duration-200 ease-out border-r border-[var(--color-border-dim)] md:hidden ${
-            isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          }`}
-        >
-          {sidebarContent}
-        </div>
+        <ChatSidebar 
+          isSidebarOpen={isSidebarOpen}
+          setIsSidebarOpen={setIsSidebarOpen}
+          isSidebarCollapsed={isSidebarCollapsed}
+          setIsSidebarCollapsed={setIsSidebarCollapsed}
+          fetchingSidebar={fetchingSidebar}
+          conversations={conversations}
+          currentConversationId={currentConversationId}
+          loadConversation={loadConversation}
+          startNewChat={startNewChat}
+          deleteConversation={deleteConversation}
+        />
 
         {/* MAIN CHAT AREA */}
         <div className="flex-1 flex flex-col relative min-w-0">
           
-          {/* TOP BAR */}
-          <header className="h-[52px] bg-[color-mix(in_srgb,var(--color-bg-base)_85%,transparent)] backdrop-blur-md border-b border-[var(--color-border-dim)] flex items-center justify-between px-4 shrink-0 z-20 transition-colors">
-            <div className="flex items-center gap-2">
-              <button 
-                className="md:hidden p-1.5 -ml-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-                onClick={() => setIsSidebarOpen(true)}
-              >
-                <Menu className="w-5 h-5" />
-              </button>
-              <button 
-                className={`hidden md:block p-1.5 -ml-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-all ${isSidebarCollapsed ? 'opacity-100' : 'opacity-0 pointer-events-none -ml-8'}`}
-                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              >
-                <Menu className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <Link 
-                href="/dashboard"
-                className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-subtle)] rounded transition-colors"
-              >
-                <FolderOpen className="w-4 h-4" /> Documents
-              </Link>
-              <div className="w-[1px] h-4 bg-[var(--color-border-strong)]" />
-              <UserMenu />
-            </div>
-          </header>
+          <ChatHeader 
+            isSidebarOpen={isSidebarOpen}
+            setIsSidebarOpen={setIsSidebarOpen}
+            isSidebarCollapsed={isSidebarCollapsed}
+            setIsSidebarCollapsed={setIsSidebarCollapsed}
+            exportToPDF={exportToPDF}
+          />
 
-          {/* MESSAGES */}
-          <div className="flex-1 overflow-y-auto pt-8 pb-[100px] px-4 scrollbar-thin">
-            {messages.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center max-w-[560px] mx-auto pb-12">
-                <div className="w-12 h-12 flex items-center justify-center mb-6 text-[var(--color-accent)]">
-                  <Scale className="w-10 h-10 stroke-[1.5]" />
-                </div>
-                <h2 className="font-heading font-medium text-[22px] text-[var(--color-text-primary)] text-center mb-2">
-                  What legal matter can I help with?
-                </h2>
-                <p className="text-[14px] text-[var(--color-text-secondary)] text-center mb-10 max-w-[360px] leading-relaxed">
-                  Describe your situation in plain language. I'll identify the right legal path and draft your documents.
-                </p>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
-                  {SUGGESTED_PROMPTS.map((prompt, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => {
-                        setInput(prompt);
-                        textareaRef.current?.focus();
-                      }}
-                      className="group flex items-center gap-3 bg-[var(--color-bg-surface)] border border-[var(--color-border-strong)] rounded-lg p-3.5 text-left transition-colors hover:border-[var(--color-border-accent)] hover:bg-[var(--color-accent-muted)]"
-                    >
-                      <div className="w-1 h-1 rounded-sm bg-[var(--color-accent)] shrink-0 opacity-70 group-hover:opacity-100" />
-                      <span className="text-[13px] font-sans font-normal text-[var(--color-text-primary)] leading-tight">{prompt}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="max-w-[720px] mx-auto w-full flex flex-col gap-8">
-                {messages.map((msg, i) => (
-                  <div key={i} className={`flex w-full group ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                    
-                    {msg.role === "user" ? (
-                      <div className="flex items-end gap-2 max-w-[70%]">
-                        <span className="text-[10px] text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 transition-opacity mb-1 shrink-0">
-                          {msg.timestamp ? msg.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}
-                        </span>
-                        <div className="bg-[var(--color-accent)] text-[#080808] px-3.5 py-2.5 rounded-t-xl rounded-bl-xl rounded-br-[2px] text-[13px] font-sans font-normal leading-relaxed whitespace-pre-wrap shadow-sm">
-                          {msg.content}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-start gap-3 w-full pl-4 border-l-2 border-[var(--color-border-accent)]">
-                        <div className="flex-1 min-w-0">
-                          
-                          <div className="flex items-center gap-2 mb-2">
-                            {msg.intent && (
-                              <span className="inline-flex items-center px-2 py-1 rounded bg-[var(--color-accent-muted)] border border-[var(--color-border-accent)] border-opacity-30 text-[10px] font-sans font-medium text-[var(--color-accent)] tracking-wide uppercase">
-                                {msg.intent}
-                              </span>
-                            )}
-                            <span className="text-[10px] text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 transition-opacity">
-                              {msg.timestamp ? msg.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}
-                            </span>
-                          </div>
-                          
-                          <div className="text-[15px] font-sans leading-[1.8] text-[var(--color-text-primary)]">
-                            <ReactMarkdown
-                              remarkPlugins={[remarkGfm]}
-                              rehypePlugins={[rehypeRaw]}
-                              components={{
-                                p: ({node, ...props}) => <p className="mb-4 last:mb-0" {...props} />,
-                                h1: ({node, ...props}) => <h1 className="font-heading font-medium text-xl mt-6 mb-3" {...props} />,
-                                h2: ({node, ...props}) => <h2 className="font-heading font-medium text-lg mt-5 mb-2" {...props} />,
-                                h3: ({node, ...props}) => <h3 className="font-heading font-medium text-[16px] mt-4 mb-2" {...props} />,
-                                ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-4" {...props} />,
-                                ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-4" {...props} />,
-                                li: ({node, ...props}) => <li className="mb-1" {...props} />,
-                                code: ({node, inline, ...props}: any) => 
-                                  inline 
-                                    ? <code className="font-mono text-[13px] bg-[var(--color-bg-subtle)] px-1.5 py-0.5 rounded text-[var(--color-text-primary)]" {...props} />
-                                    : <code className="block font-mono text-[13px] bg-[var(--color-bg-subtle)] p-4 rounded border border-[var(--color-border-dim)] overflow-x-auto my-4 whitespace-pre-wrap" {...props} />,
-                              }}
-                            >
-                              {msg.content}
-                            </ReactMarkdown>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
+          <ChatMessageList 
+            messages={messages}
+            loading={loading}
+            setInput={setInput}
+            textareaRef={textareaRef}
+            messagesEndRef={messagesEndRef}
+            suggestedPrompts={SUGGESTED_PROMPTS}
+            exportRef={exportRef}
+          />
 
-                {/* LOADING INDICATOR */}
-                {loading && (
-                  <div className="flex items-start gap-3 w-full pl-4 border-l-2 border-[var(--color-border-accent)] opacity-80">
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center gap-1.5 h-[20px]">
-                        <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] animate-pulse"></div>
-                        <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] animate-pulse" style={{ animationDelay: '150ms' }}></div>
-                        <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] animate-pulse" style={{ animationDelay: '300ms' }}></div>
-                      </div>
-                      <div className="text-[12px] font-medium text-[var(--color-text-secondary)] transition-opacity duration-300">
-                        {LOADING_STATUSES[loadingStatusIdx]}
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                <div ref={messagesEndRef} className="h-1" />
-              </div>
-            )}
-          </div>
-
-          {/* INPUT BAR */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 bg-[color-mix(in_srgb,var(--color-bg-base)_90%,transparent)] backdrop-blur-[8px] border-t border-[var(--color-border-dim)] z-30 transition-colors">
-            <div className="max-w-[720px] mx-auto relative flex items-end gap-2 bg-[var(--color-bg-subtle)] border border-[var(--color-border-dim)] rounded-lg p-1 focus-within:border-[var(--color-accent)] transition-colors">
-              
-              <label className="shrink-0 p-2 text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] cursor-pointer transition-colors self-end mb-0.5">
-                <Paperclip className="w-5 h-5" />
-                <input 
-                  type="file" 
-                  className="hidden" 
-                  onChange={handleFileUpload} 
-                  accept=".pdf,.txt,.docx"
-                  disabled={loading}
-                />
-              </label>
-              
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={handleInput}
-                onKeyDown={handleKeyDown}
-                placeholder="Describe your legal situation…"
-                className="flex-1 max-h-[120px] bg-transparent text-[14px] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] resize-none outline-none py-3 overflow-y-auto scrollbar-thin"
-                rows={1}
-                disabled={loading}
-              />
-              
-              <button
-                onClick={sendMessage}
-                disabled={!input.trim() || loading}
-                className="shrink-0 w-8 h-8 rounded bg-[var(--color-accent)] flex items-center justify-center text-[#080808] self-end mb-1 mr-1 transition-colors disabled:bg-[var(--color-bg-elevated)] disabled:border disabled:border-[var(--color-border-strong)] disabled:text-[var(--color-text-muted)]"
-              >
-                <ArrowUp className="w-4 h-4 stroke-[2.5]" />
-              </button>
-              
-            </div>
-            <div className="max-w-[720px] mx-auto text-center mt-2">
-              <span className="text-[10px] text-[var(--color-text-muted)]">JanSaathi can make mistakes. Verify important information.</span>
-            </div>
-          </div>
+          <ChatInput 
+            input={input}
+            handleInput={handleInput}
+            handleKeyDown={handleKeyDown}
+            sendMessage={sendMessage}
+            loading={loading}
+            textareaRef={textareaRef}
+            handleFileUpload={handleFileUpload}
+          />
 
         </div>
       </div>
