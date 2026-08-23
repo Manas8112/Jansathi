@@ -7,7 +7,7 @@ from utils.llm_utils import strip_think
 
 # We use the smarter model for complex legal drafting
 llm = ChatGroq(
-    model=os.getenv("MODEL_NAME", "openai/gpt-oss-120b"),
+    model=os.getenv("MODEL_NAME", "llama3-70b-8192"),
     temperature=0.2,
     max_tokens=2048
 )

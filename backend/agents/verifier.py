@@ -21,7 +21,7 @@ from utils.llm_utils import strip_think
 
 # Use fast model for verification — it only needs to check, not generate
 verifier_llm = ChatGroq(
-    model=os.getenv("MODEL_CHEAP", "qwen/qwen3-1.7b"),
+    model=os.getenv("MODEL_CHEAP", "llama3-8b-8192"),
     temperature=0.0
 )
 
@@ -75,7 +75,7 @@ Write the improved response now:"""),
 ])
 
 correction_llm = ChatGroq(
-    model=os.getenv("MODEL_NAME", "qwen/qwen3-27b"),
+    model=os.getenv("MODEL_NAME", "llama3-70b-8192"),
     temperature=0.2,
     max_tokens=1024
 )

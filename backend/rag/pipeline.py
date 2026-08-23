@@ -32,7 +32,7 @@ class HybridRAGPipeline:
         
         # LLM for query expansion
         self.llm = ChatGroq(
-            model=os.getenv("MODEL_CHEAP", "openai/gpt-oss-20b"),
+            model=os.getenv("MODEL_CHEAP", "llama3-8b-8192"),
             temperature=0.0
         )
         

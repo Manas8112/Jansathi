@@ -39,7 +39,7 @@ except Exception as e:
 
 # 2. Set up the Groq Fallback
 llm = ChatGroq(
-    model=os.getenv("MODEL_CHEAP", "openai/gpt-oss-20b"),
+    model=os.getenv("MODEL_CHEAP", "llama3-8b-8192"),
     temperature=0.0
 )
 

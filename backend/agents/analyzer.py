@@ -4,7 +4,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from utils.llm_utils import strip_think
 
 llm = ChatGroq(
-    model=os.getenv("MODEL_NAME", "llama-3.3-70b-versatile"),
+    model=os.getenv("MODEL_NAME", "llama3-70b-8192"),
     api_key=os.getenv("GROQ_API_KEY"),
     temperature=0.1,
     max_tokens=1024
