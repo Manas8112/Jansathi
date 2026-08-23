@@ -61,10 +61,16 @@ def intent_router_node(state: AgentState):
          return {"user_intent": "General", "next_action": "respond"}
          
     latest_message = messages[-1].content
+    latest_message_lower = latest_message.lower()
     intent = None
     
+    # Keyword override for filling documents (since local model wasn't trained on this intent)
+    if "fill" in latest_message_lower and ("document" in latest_message_lower or "rti" in latest_message_lower or "notice" in latest_message_lower or "form" in latest_message_lower or "it" in latest_message_lower):
+        intent = "Fill Document"
+        print(f"[IntentRouter] Keyword override predicted: {intent}")
+    
     # Attempt 1: Local Model Inference
-    if local_model and local_tokenizer and label_mapping:
+    if not intent and local_model and local_tokenizer and label_mapping:
         try:
             inputs = local_tokenizer(latest_message, return_tensors="pt", truncation=True, padding=True, max_length=128)
             with torch.no_grad():

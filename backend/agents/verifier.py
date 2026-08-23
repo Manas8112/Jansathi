@@ -100,6 +100,11 @@ def verifier_node(state: AgentState) -> dict:
     if state.get("drafted_document"):
         print("[Verifier] Skipping verification because a document was drafted.")
         return {}
+        
+    # Skip verification if the user is in an interactive document-filling flow
+    if state.get("user_intent") == "Fill Document":
+        print("[Verifier] Skipping verification because intent is Fill Document.")
+        return {}
 
     # Find last AI message
     ai_messages = [m for m in messages if isinstance(m, AIMessage)]
