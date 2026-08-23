@@ -6,8 +6,7 @@ import io
 import fitz
 import base64
 import os
-from langchain_groq import ChatGroq
-from langchain_core.messages import HumanMessage
+import requests
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Form
 from pydantic import BaseModel
@@ -158,29 +157,25 @@ async def analyze_document(
                 extracted_text += page_text + "\n\n"
                 
         if not extracted_text.strip():
-            print("[Documents] PDF has no text. Using Groq Vision OCR...")
+            print("[Documents] PDF has no text. Using OCR.Space API...")
             page = doc[0]
             pix = page.get_pixmap()
             img_bytes = pix.tobytes("png")
-            base64_image = base64.b64encode(img_bytes).decode('utf-8')
+            base64_image = "data:image/png;base64," + base64.b64encode(img_bytes).decode('utf-8')
             
-            vision_llm = ChatGroq(
-                model="llama-3.2-11b-vision-preview",
-                api_key=os.getenv("GROQ_API_KEY"),
-                temperature=0.0
+            ocr_res = requests.post(
+                "https://api.ocr.space/parse/image",
+                data={
+                    "base64Image": base64_image,
+                    "apikey": "K84224734688957",  # Public Free Tier Key
+                    "language": "eng"
+                }
             )
-            msg = vision_llm.invoke([
-                HumanMessage(
-                    content=[
-                        {"type": "text", "text": "Extract all text and form fields from this image exactly as written. Do not add any conversational filler."},
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": f"data:image/png;base64,{base64_image}"},
-                        },
-                    ]
-                )
-            ])
-            extracted_text = msg.content
+            if ocr_res.status_code == 200:
+                ocr_data = ocr_res.json()
+                parsed = ocr_data.get("ParsedResults", [])
+                if parsed:
+                    extracted_text = parsed[0].get("ParsedText", "")
                 
         if not extracted_text.strip():
             raise HTTPException(status_code=400, detail="Could not extract any text from the PDF")

@@ -218,7 +218,7 @@ When the Drafter Agent (`agents/drafter.py`) generates a document with missing p
 **Premade Form Handling & OCR Fallback:**
 Users can upload blank government forms or contracts to the chat. 
 - The `api/documents.py` endpoint uses `PyMuPDF` to extract text and analyze the document.
-- **Groq Vision Fallback:** If the uploaded PDF is image-based or scanned, the backend converts the first page into a PNG and securely sends it to **Groq's Llama-3.2-Vision** model. This provides incredibly fast, cloud-based OCR without requiring heavy, server-crashing libraries like Tesseract on the deployment host. 
+- **OCR.Space API Fallback:** If the uploaded PDF is image-based or scanned, the backend converts the first page into a PNG and securely sends it to the free **OCR.Space API**. This provides fast, cloud-based OCR without requiring heavy, server-crashing libraries like Tesseract on the deployment host. 
 - The Analyzer identifies the missing fields, asks the user for them, and returns a cleanly structured Markdown version of the filled form.
 
 ---
