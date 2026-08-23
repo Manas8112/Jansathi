@@ -177,6 +177,9 @@ async def analyze_document(
         
         return AnalyzeResponse(analysis=analysis)
         
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"Error analyzing document: {e}")
-        raise HTTPException(status_code=500, detail="Failed to process and analyze the document")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to process and analyze the document: {repr(e)}")
