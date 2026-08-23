@@ -10,7 +10,10 @@
   },
   "dependencies": {
     "@auth/core": "^0.34.3",
+    "framer-motion": "^13.1.1",
+    "html2canvas": "^1.4.1",
     "js-cookie": "^3.0.8",
+    "jspdf": "^4.2.1",
     "lucide-react": "^1.33.0",
     "marked": "^18.0.10",
     "next": "16.3.2",
