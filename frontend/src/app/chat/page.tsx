@@ -285,7 +285,6 @@ export default function ChatPage() {
         <div className="flex-1 flex flex-col relative min-w-0">
           
           <ChatHeader 
-            isSidebarOpen={isSidebarOpen}
             setIsSidebarOpen={setIsSidebarOpen}
             isSidebarCollapsed={isSidebarCollapsed}
             setIsSidebarCollapsed={setIsSidebarCollapsed}
