@@ -3,7 +3,11 @@ Documents API - Save and retrieve generated legal documents
 """
 import uuid
 import io
-import PyPDF2
+import fitz
+import base64
+import os
+from langchain_groq import ChatGroq
+from langchain_core.messages import HumanMessage
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Form
 from pydantic import BaseModel
@@ -143,15 +147,40 @@ async def analyze_document(
     
     try:
         content = await file.read()
-        pdf_reader = PyPDF2.PdfReader(io.BytesIO(content))
+        doc = fitz.open(stream=content, filetype="pdf")
         
         extracted_text = ""
         # Read up to the first 10 pages to avoid massive context
-        num_pages = min(10, len(pdf_reader.pages))
+        num_pages = min(10, len(doc))
         for i in range(num_pages):
-            page_text = pdf_reader.pages[i].extract_text()
+            page_text = doc[i].get_text()
             if page_text:
                 extracted_text += page_text + "\n\n"
+                
+        if not extracted_text.strip():
+            print("[Documents] PDF has no text. Using Groq Vision OCR...")
+            page = doc[0]
+            pix = page.get_pixmap()
+            img_bytes = pix.tobytes("png")
+            base64_image = base64.b64encode(img_bytes).decode('utf-8')
+            
+            vision_llm = ChatGroq(
+                model="llama-3.2-11b-vision-preview",
+                api_key=os.getenv("GROQ_API_KEY"),
+                temperature=0.0
+            )
+            msg = vision_llm.invoke([
+                HumanMessage(
+                    content=[
+                        {"type": "text", "text": "Extract all text and form fields from this image exactly as written. Do not add any conversational filler."},
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": f"data:image/png;base64,{base64_image}"},
+                        },
+                    ]
+                )
+            ])
+            extracted_text = msg.content
                 
         if not extracted_text.strip():
             raise HTTPException(status_code=400, detail="Could not extract any text from the PDF")

@@ -44,7 +44,7 @@ llm = ChatGroq(
 )
 
 intent_prompt = ChatPromptTemplate.from_messages([
-    ("system", "You are an expert Indian legal intent classifier. Read the user's message IN THE CONTEXT of the recent conversation and classify their true intent into exactly ONE of these categories: 'RTI', 'Complaint', 'Draft Document', 'Legal Advice', 'Scheme Info', or 'General'. Return ONLY the category string.\n\nRecent Conversation History:\n{history}"),
+    ("system", "You are an expert Indian legal intent classifier. Read the user's message IN THE CONTEXT of the recent conversation and classify their true intent into exactly ONE of these categories: 'RTI', 'Complaint', 'Draft Document', 'Fill Document', 'Legal Advice', 'Scheme Info', or 'General'. Return ONLY the category string.\n\nRecent Conversation History:\n{history}"),
     ("user", "{message}")
 ])
 
@@ -100,13 +100,13 @@ def intent_router_node(state: AgentState):
     
     # Normalize intent string
     intent_clean = "General"
-    for valid_intent in ["RTI", "Complaint", "Draft Document", "Legal Advice", "Scheme Info", "General"]:
+    for valid_intent in ["RTI", "Complaint", "Draft Document", "Fill Document", "Legal Advice", "Scheme Info", "General"]:
         if valid_intent.lower() in str(intent).lower():
             intent_clean = valid_intent
             break
     
     # Simple routing logic based on intent
-    if intent_clean in ["RTI", "Complaint", "Draft Document"]:
+    if intent_clean in ["RTI", "Complaint", "Draft Document", "Fill Document"]:
         next_action = "draft_document"
     elif intent_clean in ["Legal Advice", "Scheme Info"]:
         next_action = "retrieve_context"
