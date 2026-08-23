@@ -107,7 +107,8 @@ export default function Dashboard() {
   const fetchDocuments = async () => {
     try {
       const token = Cookies.get('token');
-      const res = await fetch('http://127.0.0.1:8000/api/documents/', {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === "development" ? "http://127.0.0.1:8000" : "https://jansathi-ahwr.onrender.com");
+      const res = await fetch(`${API_URL}/api/documents/`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -129,7 +130,8 @@ export default function Dashboard() {
     
     try {
       const token = Cookies.get('token');
-      const res = await fetch(`http://127.0.0.1:8000/api/documents/${id}`, {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === "development" ? "http://127.0.0.1:8000" : "https://jansathi-ahwr.onrender.com");
+      const res = await fetch(`${API_URL}/api/documents/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

@@ -18,6 +18,7 @@ const SUGGESTED_PROMPTS = [
   "Send a legal notice",
   "Explain my tenant rights"
 ];
+const API_URL = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === "development" ? "http://127.0.0.1:8000" : "https://jansathi-ahwr.onrender.com");
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -43,7 +44,7 @@ export default function ChatPage() {
     setFetchingSidebar(true);
     try {
       const token = Cookies.get("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/chat/conversations`, {
+      const res = await fetch(`${API_URL}/api/chat/conversations`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (res.ok) {
@@ -74,7 +75,7 @@ export default function ChatPage() {
     setIsSidebarOpen(false);
     try {
       const token = Cookies.get("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/chat/conversations/${id}`, {
+      const res = await fetch(`${API_URL}/api/chat/conversations/${id}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (res.ok) {
@@ -105,7 +106,7 @@ export default function ChatPage() {
     
     try {
       const token = Cookies.get("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/chat/conversations/${id}`, {
+      const res = await fetch(`${API_URL}/api/chat/conversations/${id}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -136,7 +137,7 @@ export default function ChatPage() {
 
     try {
       const token = Cookies.get("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/chat/`, {
+      const res = await fetch(`${API_URL}/api/chat/`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -199,7 +200,7 @@ export default function ChatPage() {
         formData.append("conversation_id", targetId);
       }
       
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/documents/analyze`, {
+      const res = await fetch(`${API_URL}/api/documents/analyze`, {
         method: "POST",
         headers: { "Authorization": `Bearer ${token}` },
         body: formData,
