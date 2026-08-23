@@ -27,22 +27,34 @@ JanSaathi solves all three problems through a modular multi-agent architecture w
 
 ```mermaid
 graph TD
+    %% Document Upload Pipeline
+    Doc["Upload PDF/Image"] --> OCR{"Has Text?"}
+    OCR -->|"Yes"| PyMuPDF["PyMuPDF Parser"]
+    OCR -->|"No (Scanned)"| OCRAPI["OCR.Space API"]
+    PyMuPDF --> Analyzer["Analyzer Agent"]
+    OCRAPI --> Analyzer
+    Analyzer --> I["Output to User"]
+
+    %% Chat Pipeline
     A["User Message"] --> B["Intent Router Node"]
     
-    B -->|"RTI / Complaint / Draft"| C["Knowledge Graph Lookup"]
+    B -->|"RTI / Complaint / Draft / Fill"| C["Knowledge Graph Lookup"]
     B -->|"Legal Advice / Scheme Info"| C
     B -->|"General Chitchat"| G["General Chat Node"]
     
     C --> D["Hybrid RAG Retrieval"]
     
-    D -->|"RTI or Complaint intent"| E["Drafter Agent"]
-    D -->|"Legal Advice intent"| F["Legal Advisor Agent"]
+    D -->|"Draft / Fill Intent"| E["Drafter Agent"]
+    D -->|"Legal Advice Intent"| F["Legal Advisor Agent"]
     
-    E --> H["Verifier Agent"]
+    E --> VCheck{"Is Fill Document?"}
+    VCheck -->|"Yes (Bypass Reflexion)"| I
+    VCheck -->|"No"| H["Verifier Agent"]
+    
     F --> H
     
     H -->|"Score < 7: re-draft"| E
-    H -->|"Score >= 7: accept"| I["Output to User"]
+    H -->|"Score >= 7: accept"| I
     G --> I
 ```
 
