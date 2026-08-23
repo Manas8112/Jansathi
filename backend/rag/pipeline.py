@@ -14,6 +14,9 @@ class HybridRAGPipeline:
         
         # Cross-Encoder for reranking (Wrap in try-except for offline/proxy resilience)
         try:
+            is_render = os.getenv("RENDER") == "true"
+            if is_render:
+                raise Exception("Running on Render (limited RAM). Local cross-encoder disabled.")
             # Try offline first
             self.reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-12-v2', max_length=512, local_files_only=True)
         except Exception:

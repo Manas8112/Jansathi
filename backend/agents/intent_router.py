@@ -15,8 +15,10 @@ local_model = None
 local_tokenizer = None
 label_mapping = {}
 
+is_render = os.getenv("RENDER") == "true"
+
 try:
-    if os.path.exists(MODEL_DIR) and os.path.exists(os.path.join(MODEL_DIR, "model.safetensors")):
+    if not is_render and os.path.exists(MODEL_DIR) and os.path.exists(os.path.join(MODEL_DIR, "model.safetensors")):
         print("[IntentRouter] Loading local fine-tuned model...")
         local_tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
         local_model = AutoModelForSequenceClassification.from_pretrained(MODEL_DIR)
