@@ -82,8 +82,8 @@ graph TD
 The first node in the graph classifies the user's message into one of six categories: `RTI`, `Complaint`, `Draft Document`, `Legal Advice`, `Scheme Info`, or `General`.
 
 **How it works:**
-- **Local Fine-Tuned Model:** The system natively uses a `law-ai/InLegalBERT` transformer model fine-tuned on a custom dataset of 300+ diverse legal intents.
-- **Training Data (`intent_training.jsonl`):** We expanded our initial 15-sample dataset to over 300 unique, hand-crafted queries covering RTI applications, consumer complaints, legal notice drafting, and government scheme inquiries.
+- **Local Fine-Tuned Model:** The system natively uses a `law-ai/InLegalBERT` transformer model fine-tuned on a custom dataset of over 6,000 diverse Indian legal intents.
+- **Training Data (`intent_training.jsonl`):** We expanded our initial dataset to over 6,000 unique, hand-crafted queries covering RTI applications, consumer complaints, legal notice drafting, and government scheme inquiries.
 - **Inference & Fallback:** The local model (`model.safetensors` - 437MB) runs entirely offline with zero latency. If the model is missing or fails, it gracefully falls back to a fast LLM (Groq) using a structured prompt with the last 4 conversation turns.
 - Based on the predicted category, the `route_after_intent()` function in `graph.py` selects the next edge (e.g., non-general intents go to the `knowledge_graph` node).
 
