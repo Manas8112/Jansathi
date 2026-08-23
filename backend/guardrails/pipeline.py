@@ -8,7 +8,7 @@ class HallucinationDetector:
     def __init__(self):
         # We use a fast, cheap model for verification
         self.llm = ChatGroq(
-            model=os.getenv("MODEL_CHEAP", "llama3-8b-8192"),
+            model=os.getenv("MODEL_CHEAP", "openai/gpt-oss-20b"),
             temperature=0.0
         )
         self.prompt = ChatPromptTemplate.from_messages([
@@ -40,7 +40,7 @@ Output a JSON object exactly matching this format:
 class ConfidenceScorer:
     def __init__(self):
         self.llm = ChatGroq(
-            model=os.getenv("MODEL_CHEAP", "llama3-8b-8192"),
+            model=os.getenv("MODEL_CHEAP", "openai/gpt-oss-20b"),
             temperature=0.0
         )
         self.prompt = ChatPromptTemplate.from_messages([
