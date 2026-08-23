@@ -6,14 +6,16 @@ import { UserMenu } from "@/components/UserMenu";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
-import { Paperclip, Send, Terminal, User as UserIcon, Trash2 } from "lucide-react";
+import { Paperclip, ArrowUp, Menu, X, FolderOpen, Scale, Trash2 } from "lucide-react";
 import Link from "next/link";
 import Cookies from "js-cookie";
+import { useToast } from "@/hooks/useToast";
 
 interface Message {
   role: "user" | "ai";
   content: string;
   intent?: string;
+  timestamp?: Date;
 }
 
 interface Conversation {
@@ -22,25 +24,44 @@ interface Conversation {
   updated_at: string;
 }
 
+const SUGGESTED_PROMPTS = [
+  "Draft an RTI application",
+  "File a consumer complaint",
+  "Send a legal notice",
+  "Explain my tenant rights"
+];
+
+const LOADING_STATUSES = [
+  "Reading your situation…",
+  "Searching legal precedents…",
+  "Checking applicable statutes…",
+  "Drafting your document…"
+];
+
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [loadingStatus, setLoadingStatus] = useState("Analyzing legal context...");
+  const [loadingStatusIdx, setLoadingStatusIdx] = useState(0);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile sidebar
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false); // Desktop sidebar
+  const [fetchingSidebar, setFetchingSidebar] = useState(true);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { toast } = useToast();
 
-  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, loading]);
 
-  // Fetch conversation history on mount
   const fetchConversations = async () => {
+    setFetchingSidebar(true);
     try {
       const token = Cookies.get("token");
-      const res = await fetch("http://127.0.0.1:8000/api/chat/conversations", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/chat/conversations`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (res.ok) {
@@ -48,7 +69,9 @@ export default function ChatPage() {
         setConversations(data);
       }
     } catch (e) {
-      console.error(e);
+      toast("Failed to load conversation history.", "error");
+    } finally {
+      setFetchingSidebar(false);
     }
   };
 
@@ -56,20 +79,44 @@ export default function ChatPage() {
     fetchConversations();
   }, []);
 
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (loading) {
+      interval = setInterval(() => {
+        setLoadingStatusIdx((prev) => (prev + 1) % LOADING_STATUSES.length);
+      }, 2500);
+    } else {
+      setLoadingStatusIdx(0);
+    }
+    return () => clearInterval(interval);
+  }, [loading]);
+
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    // Auto-grow textarea
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+    }
+  };
+
   const loadConversation = async (id: string) => {
     setLoading(true);
+    setIsSidebarOpen(false);
     try {
       const token = Cookies.get("token");
-      const res = await fetch(`http://127.0.0.1:8000/api/chat/conversations/${id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/chat/conversations/${id}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (res.ok) {
         const data = await res.json();
         setMessages(data);
         setCurrentConversationId(id);
+      } else {
+        toast("Could not load the conversation.", "error");
       }
     } catch (e) {
-      console.error(e);
+      toast("Connection error.", "error");
     } finally {
       setLoading(false);
     }
@@ -78,15 +125,18 @@ export default function ChatPage() {
   const startNewChat = () => {
     setMessages([]);
     setCurrentConversationId(null);
+    setIsSidebarOpen(false);
+    setInput("");
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
   };
 
   const deleteConversation = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (!confirm("⚠️ Are you sure you want to delete this ENTIRE chat?\n\n(If you just want to delete a saved PDF, please go to the 'My Documents' page instead. Deleting this chat will erase all message history!)")) return;
+    if (!confirm("Are you sure you want to delete this chat history?")) return;
     
     try {
       const token = Cookies.get("token");
-      const res = await fetch(`http://127.0.0.1:8000/api/chat/conversations/${id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/chat/conversations/${id}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -95,45 +145,29 @@ export default function ChatPage() {
           startNewChat();
         }
         fetchConversations();
+        toast("Chat deleted", "success");
+      } else {
+        toast("Failed to delete chat", "error");
       }
     } catch (e) {
-      console.error("Failed to delete chat", e);
+      toast("Connection error", "error");
     }
   };
 
-  // Cycle loading status text
-  useEffect(() => {
-    if (loading) {
-      const statuses = [
-        "Analyzing legal context...",
-        "Searching knowledge graph...",
-        "Evaluating jurisdiction...",
-        "Drafting response..."
-      ];
-      let i = 0;
-      setLoadingStatus(statuses[0]);
-      const interval = setInterval(() => {
-        i = (i + 1) % statuses.length;
-        setLoadingStatus(statuses[i]);
-      }, 2500);
-      return () => clearInterval(interval);
-    }
-  }, [loading]);
+  const sendMessage = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!input.trim() || loading) return;
 
-
-
-  const sendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-
-    const userMsg = input;
+    const userMsg = input.trim();
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", content: userMsg }]);
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
+    
+    setMessages((prev) => [...prev, { role: "user", content: userMsg, timestamp: new Date() }]);
     setLoading(true);
 
     try {
       const token = Cookies.get("token");
-      const res = await fetch("http://127.0.0.1:8000/api/chat/", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/chat/`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -153,22 +187,25 @@ export default function ChatPage() {
 
       setMessages((prev) => [
         ...prev,
-        { role: "ai", content: data.reply || "Error: No reply generated.", intent: data.intent },
+        { role: "ai", content: data.reply || "Error: No reply generated.", intent: data.intent, timestamp: new Date() },
       ]);
       
-      if (!currentConversationId) {
+      if (!currentConversationId && data.conversation_id) {
         setCurrentConversationId(data.conversation_id);
       }
-      // Refresh the sidebar
       fetchConversations();
-    } catch (error) {
-      console.error(error);
-      setMessages((prev) => [
-        ...prev,
-        { role: "ai", content: "Sorry, I am having trouble connecting to the backend right now." },
-      ]);
+    } catch (error: any) {
+      toast(error.message || "Failed to send message", "error");
+      // Remove the optimistic user message or let them know it failed. For simplicity, we just toast the error.
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
     }
   };
 
@@ -176,241 +213,327 @@ export default function ChatPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    // Clear the input
     e.target.value = '';
-    
-    setMessages((prev) => [...prev, { role: "user", content: `Uploaded document: ${file.name}` }]);
+    setMessages((prev) => [...prev, { role: "user", content: `Uploaded document: ${file.name}`, timestamp: new Date() }]);
     setLoading(true);
 
     try {
       const token = Cookies.get("token");
       const formData = new FormData();
       formData.append("file", file);
-      if (currentConversationId) {
-        formData.append("conversation_id", currentConversationId);
+      
+      let targetId = currentConversationId;
+      if (!targetId) {
+        targetId = crypto.randomUUID();
+        formData.append("conversation_id", targetId);
+        setCurrentConversationId(targetId);
       } else {
-        // If no conversation exists yet, create an ID to bind the file to
-        const newId = crypto.randomUUID();
-        formData.append("conversation_id", newId);
-        setCurrentConversationId(newId);
+        formData.append("conversation_id", targetId);
       }
       
-      const res = await fetch("http://127.0.0.1:8000/api/documents/analyze", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/documents/analyze`, {
         method: "POST",
-        headers: { 
-          "Authorization": `Bearer ${token}` 
-        },
+        headers: { "Authorization": `Bearer ${token}` },
         body: formData,
       });
 
-      if (!res.ok) {
-        throw new Error("Analysis failed");
-      }
+      if (!res.ok) throw new Error("Analysis failed");
 
       const data = await res.json();
       setMessages((prev) => [
         ...prev,
-        { role: "ai", content: data.analysis, intent: "Contract Analysis" },
+        { role: "ai", content: data.analysis, intent: "Document Analysis", timestamp: new Date() },
       ]);
-    } catch (error) {
-      console.error(error);
-      setMessages((prev) => [
-        ...prev,
-        { role: "ai", content: "Sorry, I could not analyze this document. Ensure it is a valid PDF." },
-      ]);
+      fetchConversations();
+    } catch (error: any) {
+      toast("Could not analyze this document. Ensure it is a valid PDF.", "error");
     } finally {
       setLoading(false);
     }
   };
 
+  // Render Sidebar Content to be used in both desktop and mobile
+  const sidebarContent = (
+    <div className="flex flex-col h-full bg-[var(--color-bg-surface)]">
+      <div className="p-4 shrink-0 flex items-center justify-between md:mt-2 md:mb-2">
+        <div className="flex items-center gap-2 md:gap-3">
+          <button 
+            className="hidden md:block p-1.5 -ml-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+            onClick={() => setIsSidebarCollapsed(true)}
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <div className="font-heading font-semibold text-[20px] text-[var(--color-accent)] tracking-tight px-1">
+            JanSaathi
+          </div>
+        </div>
+        <button className="md:hidden p-1 text-[var(--color-text-muted)]" onClick={() => setIsSidebarOpen(false)}>
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+      
+      <div className="px-4 pb-6 shrink-0 mt-2">
+        <button 
+          onClick={startNewChat}
+          className="w-full flex items-center justify-center gap-2 h-[40px] bg-[var(--color-bg-base)] border border-[var(--color-border-dim)] text-[var(--color-accent)] hover:bg-[var(--color-accent-muted)] hover:border-[var(--color-border-accent)] rounded-lg transition-all text-[14px] font-medium shadow-sm"
+        >
+          <span className="text-[18px] leading-none">+</span> New chat
+        </button>
+      </div>
+      
+      <div className="flex-1 overflow-y-auto px-2 pb-4 scrollbar-thin">
+        {fetchingSidebar ? (
+          <div className="px-2 space-y-2 mt-2">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-[36px] w-full rounded flex items-center px-2">
+                <div className="w-full flex flex-col gap-1.5 opacity-50">
+                  <div className="h-2.5 bg-[var(--color-bg-elevated)] rounded-sm w-3/4 animate-pulse"></div>
+                  <div className="h-2 bg-[var(--color-bg-elevated)] rounded-sm w-1/4 animate-pulse" style={{ animationDelay: '100ms' }}></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : conversations.length === 0 ? (
+          <div className="px-4 mt-4 text-[12px] text-[var(--color-text-muted)]">No past conversations.</div>
+        ) : (
+          <div className="space-y-0.5">
+            {conversations.map((conv) => {
+              const isActive = currentConversationId === conv.id;
+              return (
+                <div 
+                  key={conv.id} 
+                  className={`group flex items-center justify-between w-full h-[36px] px-3 rounded transition-colors cursor-pointer ${
+                    isActive 
+                      ? 'bg-[var(--color-accent-muted)] border-l-2 border-[var(--color-accent)] pl-2.5' 
+                      : 'border-l-2 border-transparent hover:bg-[var(--color-bg-elevated)]'
+                  }`}
+                  onClick={() => loadConversation(conv.id)}
+                >
+                  <div className="flex flex-col justify-center w-full min-w-0 pr-2">
+                    <span className={`text-[13px] truncate leading-tight ${isActive ? 'text-[var(--color-text-primary)] font-medium' : 'text-[var(--color-text-secondary)] font-normal group-hover:text-[var(--color-text-primary)]'}`}>
+                      {conv.title || "New Chat"}
+                    </span>
+                  </div>
+                  <button 
+                    onClick={(e) => deleteConversation(e, conv.id)}
+                    className="p-1 shrink-0 opacity-0 group-hover:opacity-100 text-[var(--color-text-muted)] hover:text-[var(--color-semantic-red)] transition-all"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <ProtectedRoute>
-      <div className="flex h-screen bg-black text-white overflow-hidden selection:bg-white selection:text-black">
+      <div className="flex h-screen bg-[var(--color-bg-base)] text-[var(--color-text-primary)] overflow-hidden selection:bg-[var(--color-accent)] selection:text-[#080808]">
         
-        {/* Sidebar (Roadmap & Documents preview) */}
-        <div className="w-80 bg-black border-r border-[#1a1a1a] p-6 hidden md:flex flex-col">
-          <div className="text-xl font-semibold tracking-tight mb-8 text-white">JanSaathi</div>
-          
-          <button 
-            onClick={startNewChat}
-            className="w-full flex items-center justify-center gap-2 mb-6 px-4 py-3 bg-white text-black hover:bg-gray-200 rounded font-medium transition-colors"
-          >
-            <span className="text-lg">+</span> New Chat
-          </button>
-          
-          <div className="flex-1 overflow-y-auto mb-4 scrollbar-thin scrollbar-thumb-[#333] pr-2">
-            <h3 className="text-xs font-semibold text-[#888] uppercase tracking-wider mb-4 sticky top-0 bg-black pt-2 pb-2 z-10">Recent Chats</h3>
-            {conversations.length === 0 ? (
-              <div className="text-sm text-[#555] italic">No past conversations.</div>
-            ) : (
-              <div className="space-y-1">
-                {conversations.map((conv) => (
-                  <div key={conv.id} className={`flex items-center justify-between w-full rounded transition-colors group ${currentConversationId === conv.id ? 'bg-[#222] text-white' : 'text-[#888] hover:bg-[#111] hover:text-white'}`}>
-                    <button
-                      onClick={() => loadConversation(conv.id)}
-                      className="flex-1 text-left px-3 py-2.5 text-sm truncate"
-                    >
-                      {conv.title || "New Chat"}
-                    </button>
-                    <button 
-                      onClick={(e) => deleteConversation(e, conv.id)}
-                      className="p-2 opacity-0 group-hover:opacity-100 hover:text-red-400 transition-opacity"
-                      title="Delete chat"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          
-          <div className="mb-4">
-            <Link href="/dashboard" className="flex items-center gap-3 w-full px-4 py-3 bg-black hover:bg-[#111] border border-[#222] rounded text-white transition-colors cursor-pointer">
-              <span className="text-lg">📄</span>
-              <span className="font-medium text-sm">My Documents</span>
-            </Link>
-          </div>
-          
-          <div className="mt-auto pb-4">
-            <UserMenu />
+        {/* DESKTOP SIDEBAR */}
+        <div className={`hidden md:block h-full shrink-0 border-r border-[var(--color-border-dim)] z-10 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'w-0 overflow-hidden border-r-0' : 'w-[280px]'}`}>
+          <div className="w-[280px] h-full">
+            {sidebarContent}
           </div>
         </div>
 
-        {/* Main Chat Area */}
-        <div className="flex-1 flex flex-col relative bg-black">
+        {/* MOBILE SIDEBAR & OVERLAY */}
+        {isSidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-[rgba(0,0,0,0.6)] z-40 md:hidden animate-in fade-in duration-150"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+        <div 
+          className={`fixed inset-y-0 left-0 w-[280px] z-50 transform transition-transform duration-200 ease-out border-r border-[var(--color-border-dim)] md:hidden ${
+            isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        >
+          {sidebarContent}
+        </div>
+
+        {/* MAIN CHAT AREA */}
+        <div className="flex-1 flex flex-col relative min-w-0">
           
-          {/* Messages Container */}
-          <div className="flex-1 overflow-y-auto p-4 md:p-8 scrollbar-thin scrollbar-thumb-[#333] scrollbar-track-transparent">
+          {/* TOP BAR */}
+          <header className="h-[52px] bg-[color-mix(in_srgb,var(--color-bg-base)_85%,transparent)] backdrop-blur-md border-b border-[var(--color-border-dim)] flex items-center justify-between px-4 shrink-0 z-20 transition-colors">
+            <div className="flex items-center gap-2">
+              <button 
+                className="md:hidden p-1.5 -ml-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+                onClick={() => setIsSidebarOpen(true)}
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+              <button 
+                className={`hidden md:block p-1.5 -ml-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-all ${isSidebarCollapsed ? 'opacity-100' : 'opacity-0 pointer-events-none -ml-8'}`}
+                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <Link 
+                href="/dashboard"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-subtle)] rounded transition-colors"
+              >
+                <FolderOpen className="w-4 h-4" /> Documents
+              </Link>
+              <div className="w-[1px] h-4 bg-[var(--color-border-strong)]" />
+              <UserMenu />
+            </div>
+          </header>
+
+          {/* MESSAGES */}
+          <div className="flex-1 overflow-y-auto pt-8 pb-[100px] px-4 scrollbar-thin">
             {messages.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center max-w-2xl mx-auto">
-                <div className="w-12 h-12 rounded bg-white flex items-center justify-center mb-6">
-                  <Terminal size={24} className="text-black" />
+              <div className="h-full flex flex-col items-center justify-center max-w-[560px] mx-auto pb-12">
+                <div className="w-12 h-12 flex items-center justify-center mb-6 text-[var(--color-accent)]">
+                  <Scale className="w-10 h-10 stroke-[1.5]" />
                 </div>
-                <h1 className="text-2xl font-medium mb-4 text-white tracking-tight">
-                  How can I help you today?
-                </h1>
-                <p className="text-[#888] text-[15px] leading-relaxed max-w-md">
-                  Analyze legal contracts, draft RTI applications, and get guidance on consumer complaints in plain language.
+                <h2 className="font-heading font-medium text-[22px] text-[var(--color-text-primary)] text-center mb-2">
+                  What legal matter can I help with?
+                </h2>
+                <p className="text-[14px] text-[var(--color-text-secondary)] text-center mb-10 max-w-[360px] leading-relaxed">
+                  Describe your situation in plain language. I'll identify the right legal path and draft your documents.
                 </p>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                  {SUGGESTED_PROMPTS.map((prompt, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setInput(prompt);
+                        textareaRef.current?.focus();
+                      }}
+                      className="group flex items-center gap-3 bg-[var(--color-bg-surface)] border border-[var(--color-border-strong)] rounded-lg p-3.5 text-left transition-colors hover:border-[var(--color-border-accent)] hover:bg-[var(--color-accent-muted)]"
+                    >
+                      <div className="w-1 h-1 rounded-sm bg-[var(--color-accent)] shrink-0 opacity-70 group-hover:opacity-100" />
+                      <span className="text-[13px] font-sans font-normal text-[var(--color-text-primary)] leading-tight">{prompt}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : (
-              <div className="max-w-3xl mx-auto space-y-10 pb-4">
+              <div className="max-w-[720px] mx-auto w-full flex flex-col gap-8">
                 {messages.map((msg, i) => (
-                  <div key={i} className="flex gap-5 group">
-                    <div className="flex-shrink-0 mt-1">
-                      {msg.role === "user" ? (
-                        <div className="h-7 w-7 rounded bg-[#222] flex items-center justify-center text-[#ccc]">
-                          <UserIcon size={14} />
-                        </div>
-                      ) : (
-                        <div className="h-7 w-7 rounded bg-white flex items-center justify-center text-black">
-                          <Terminal size={14} />
-                        </div>
-                      )}
-                    </div>
+                  <div key={i} className={`flex w-full group ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                     
-                    <div className="flex-1 space-y-2 overflow-hidden min-w-0">
-                      <div className="flex items-center gap-3">
-                        <span className="font-semibold text-[13px] text-white">
-                          {msg.role === "user" ? "You" : "JanSaathi"}
+                    {msg.role === "user" ? (
+                      <div className="flex items-end gap-2 max-w-[70%]">
+                        <span className="text-[10px] text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 transition-opacity mb-1 shrink-0">
+                          {msg.timestamp ? msg.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}
                         </span>
-                        {msg.intent && (
-                          <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[#111] text-[#888] border border-[#222]">
-                            {msg.intent}
-                          </span>
-                        )}
+                        <div className="bg-[var(--color-accent)] text-[#080808] px-3.5 py-2.5 rounded-t-xl rounded-bl-xl rounded-br-[2px] text-[13px] font-sans font-normal leading-relaxed whitespace-pre-wrap shadow-sm">
+                          {msg.content}
+                        </div>
                       </div>
-                      
-                      <div className={msg.role === "user" ? "text-[#eee] text-[15px] leading-relaxed whitespace-pre-wrap" : "prose prose-invert prose-p:leading-relaxed prose-pre:bg-[#111] prose-pre:border prose-pre:border-[#222] prose-td:border-[#222] prose-th:border-[#222] prose-a:text-white prose-a:underline max-w-none text-[#eee] text-[15px]"}>
-                        {msg.role === "user" ? (
-                          msg.content
-                        ) : (
-                          <ReactMarkdown 
-                            remarkPlugins={[remarkGfm]}
-                            rehypePlugins={[rehypeRaw]}
-                            components={{
-                              a: ({node, ...props}) => {
-                                let href = props.href;
-                                if (href) {
-                                  // Clean up any markdown asterisks the AI accidentally put inside the URL
-                                  href = href.replace(/%2A/gi, '').replace(/\*/g, '');
-                                  if (!href.startsWith('http') && !href.startsWith('/')) {
-                                    href = `https://${href}`;
-                                  }
-                                }
-                                return <a {...props} href={href} target={href?.startsWith('/') ? undefined : "_blank"} rel="noopener noreferrer" className="text-white font-medium hover:text-[#ccc] underline decoration-[#555] underline-offset-4 transition-colors cursor-pointer" />;
-                              }
-                            }}
-                          >
-                            {msg.content.replace(/(?<!\]\()(https?:\/\/[^\s)]+)/g, '[$1]($1)')}
-                          </ReactMarkdown>
-                        )}
+                    ) : (
+                      <div className="flex items-start gap-3 w-full pl-4 border-l-2 border-[var(--color-border-accent)]">
+                        <div className="flex-1 min-w-0">
+                          
+                          <div className="flex items-center gap-2 mb-2">
+                            {msg.intent && (
+                              <span className="inline-flex items-center px-2 py-1 rounded bg-[var(--color-accent-muted)] border border-[var(--color-border-accent)] border-opacity-30 text-[10px] font-sans font-medium text-[var(--color-accent)] tracking-wide uppercase">
+                                {msg.intent}
+                              </span>
+                            )}
+                            <span className="text-[10px] text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 transition-opacity">
+                              {msg.timestamp ? msg.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}
+                            </span>
+                          </div>
+                          
+                          <div className="text-[15px] font-sans leading-[1.8] text-[var(--color-text-primary)]">
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              rehypePlugins={[rehypeRaw]}
+                              components={{
+                                p: ({node, ...props}) => <p className="mb-4 last:mb-0" {...props} />,
+                                h1: ({node, ...props}) => <h1 className="font-heading font-medium text-xl mt-6 mb-3" {...props} />,
+                                h2: ({node, ...props}) => <h2 className="font-heading font-medium text-lg mt-5 mb-2" {...props} />,
+                                h3: ({node, ...props}) => <h3 className="font-heading font-medium text-[16px] mt-4 mb-2" {...props} />,
+                                ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-4" {...props} />,
+                                ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-4" {...props} />,
+                                li: ({node, ...props}) => <li className="mb-1" {...props} />,
+                                code: ({node, inline, ...props}: any) => 
+                                  inline 
+                                    ? <code className="font-mono text-[13px] bg-[var(--color-bg-subtle)] px-1.5 py-0.5 rounded text-[var(--color-text-primary)]" {...props} />
+                                    : <code className="block font-mono text-[13px] bg-[var(--color-bg-subtle)] p-4 rounded border border-[var(--color-border-dim)] overflow-x-auto my-4 whitespace-pre-wrap" {...props} />,
+                              }}
+                            >
+                              {msg.content}
+                            </ReactMarkdown>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 ))}
-                
+
+                {/* LOADING INDICATOR */}
                 {loading && (
-                  <div className="flex gap-5">
-                    <div className="flex-shrink-0 mt-1">
-                      <div className="h-7 w-7 rounded bg-[#111] border border-[#222] flex items-center justify-center text-[#888]">
-                        <Terminal size={14} />
+                  <div className="flex items-start gap-3 w-full pl-4 border-l-2 border-[var(--color-border-accent)] opacity-80">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-1.5 h-[20px]">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] animate-pulse"></div>
+                        <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] animate-pulse" style={{ animationDelay: '150ms' }}></div>
+                        <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] animate-pulse" style={{ animationDelay: '300ms' }}></div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-3 h-7">
-                      <span className="text-[#666] font-mono text-xs">{loadingStatus}</span>
-                      <div className="flex space-x-1">
-                        <div className="w-1 h-1 bg-[#666] rounded-full animate-bounce"></div>
-                        <div className="w-1 h-1 bg-[#666] rounded-full animate-bounce delay-150"></div>
-                        <div className="w-1 h-1 bg-[#666] rounded-full animate-bounce delay-300"></div>
+                      <div className="text-[12px] font-medium text-[var(--color-text-secondary)] transition-opacity duration-300">
+                        {LOADING_STATUSES[loadingStatusIdx]}
                       </div>
                     </div>
                   </div>
                 )}
-                <div ref={messagesEndRef} />
+                
+                <div ref={messagesEndRef} className="h-1" />
               </div>
             )}
           </div>
 
-          {/* Input Box - Strict Flex Column (No absolute overlap) */}
-          <div className="w-full bg-black shrink-0 px-4 pt-2 pb-6 border-t border-[#111]">
-            <div className="max-w-3xl mx-auto">
-              <form onSubmit={sendMessage} className="relative flex items-center bg-[#0a0a0a] border border-[#222] rounded focus-within:border-[#555] transition-colors">
-                <input
-                  type="file"
-                  id="file-upload"
-                  accept="application/pdf"
-                  className="hidden"
-                  onChange={handleFileUpload}
+          {/* INPUT BAR */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 bg-[color-mix(in_srgb,var(--color-bg-base)_90%,transparent)] backdrop-blur-[8px] border-t border-[var(--color-border-dim)] z-30 transition-colors">
+            <div className="max-w-[720px] mx-auto relative flex items-end gap-2 bg-[var(--color-bg-subtle)] border border-[var(--color-border-dim)] rounded-lg p-1 focus-within:border-[var(--color-accent)] transition-colors">
+              
+              <label className="shrink-0 p-2 text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] cursor-pointer transition-colors self-end mb-0.5">
+                <Paperclip className="w-5 h-5" />
+                <input 
+                  type="file" 
+                  className="hidden" 
+                  onChange={handleFileUpload} 
+                  accept=".pdf,.txt,.docx"
                   disabled={loading}
                 />
-                <label htmlFor="file-upload" className="p-3 ml-1 rounded hover:bg-[#111] cursor-pointer text-[#666] hover:text-white transition-colors z-10" title="Upload contract or lease">
-                  <Paperclip size={18} />
-                </label>
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Message JanSaathi..."
-                  className="w-full bg-transparent border-none py-3.5 px-2 text-white placeholder-[#555] focus:outline-none focus:ring-0 text-[15px]"
-                  disabled={loading}
-                  autoComplete="off"
-                />
-                <button 
-                  type="submit" 
-                  disabled={!input.trim() || loading}
-                  className="p-1.5 mr-2 rounded bg-white text-black hover:bg-gray-200 disabled:opacity-50 disabled:bg-[#222] disabled:text-[#666] transition-colors"
-                >
-                  <Send size={16} className={input.trim() ? "translate-x-0.5" : ""} />
-                </button>
-              </form>
-              <div className="text-center mt-2 text-[10px] text-[#555] font-mono">
-                JanSaathi is an AI and can make mistakes. Verify critical legal information.
-              </div>
+              </label>
+              
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={handleInput}
+                onKeyDown={handleKeyDown}
+                placeholder="Describe your legal situation…"
+                className="flex-1 max-h-[120px] bg-transparent text-[14px] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] resize-none outline-none py-3 overflow-y-auto scrollbar-thin"
+                rows={1}
+                disabled={loading}
+              />
+              
+              <button
+                onClick={sendMessage}
+                disabled={!input.trim() || loading}
+                className="shrink-0 w-8 h-8 rounded bg-[var(--color-accent)] flex items-center justify-center text-[#080808] self-end mb-1 mr-1 transition-colors disabled:bg-[var(--color-bg-elevated)] disabled:border disabled:border-[var(--color-border-strong)] disabled:text-[var(--color-text-muted)]"
+              >
+                <ArrowUp className="w-4 h-4 stroke-[2.5]" />
+              </button>
+              
+            </div>
+            <div className="max-w-[720px] mx-auto text-center mt-2">
+              <span className="text-[10px] text-[var(--color-text-muted)]">JanSaathi can make mistakes. Verify important information.</span>
             </div>
           </div>
-          
+
         </div>
       </div>
     </ProtectedRoute>

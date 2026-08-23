@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter, DM_Sans } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "../lib/auth";
+import { ToastContainer } from "@/components/Toast";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -24,13 +26,31 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var storedTheme = localStorage.getItem('theme');
+                  var theme = storedTheme || 'dark';
+                  document.documentElement.setAttribute('data-theme', theme);
+                } catch (e) {}
+              })();
+            `
+          }}
+        />
+      </head>
       <body
-        className={`${inter.variable} ${dmSans.variable} antialiased font-sans`}
+        className={`${inter.variable} ${dmSans.variable} antialiased transition-colors duration-200`}
       >
-        <AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
           {children}
+          <ToastContainer />
         </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
