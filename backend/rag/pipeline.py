@@ -2,7 +2,6 @@ import os
 import json
 from collections import Counter
 from rank_bm25 import BM25Okapi
-from sentence_transformers import CrossEncoder
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from rag.chroma_store import get_collection
@@ -19,6 +18,7 @@ class HybridRAGPipeline:
             self.reranker = None
         else:
             try:
+                from sentence_transformers import CrossEncoder
                 # Try offline first
                 self.reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-12-v2', max_length=512, local_files_only=True)
             except Exception:

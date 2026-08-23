@@ -1,12 +1,10 @@
 import os
 import json
-import torch
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from agents.state import AgentState
 from utils.llm_utils import strip_think
 from langchain_core.messages import HumanMessage
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 MODEL_DIR = os.path.join(os.path.dirname(__file__), "../models/intent_classifier")
 
@@ -19,6 +17,9 @@ is_render = os.getenv("RENDER") == "true"
 
 try:
     if not is_render and os.path.exists(MODEL_DIR) and os.path.exists(os.path.join(MODEL_DIR, "model.safetensors")):
+        import torch
+        from transformers import AutoTokenizer, AutoModelForSequenceClassification
+
         print("[IntentRouter] Loading local fine-tuned model...")
         local_tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
         local_model = AutoModelForSequenceClassification.from_pretrained(MODEL_DIR)

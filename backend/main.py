@@ -12,17 +12,18 @@ from auth.models import User
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    print("[DEBUG] Lifespan started. Initializing DB...")
     # Startup: create db tables
     await init_db()
     
+    print("[DEBUG] DB initialized. Loading ML models...")
     # Pre-load ML models (Embedding and Cross-Encoder) into memory
-    print("Initializing Machine Learning Models (this may take a moment)...")
     from rag.pipeline import get_rag_pipeline
     get_rag_pipeline()
-    print("ML Models loaded successfully!")
+    print("[DEBUG] ML Models loaded successfully! Yielding to Uvicorn...")
     
     yield
-    # Shutdown
+    print("[DEBUG] Shutdown initiated")
 
 app = FastAPI(
     title="JanSaathi API",
