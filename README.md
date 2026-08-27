@@ -81,7 +81,7 @@ graph TD
 The first node in the graph classifies the user's message into one of **19 specialized categories**.
 
 **How it works:**
-- **Local Fine-Tuned Model:** A `law-ai/InLegalBERT` transformer model fine-tuned on a custom dataset of over **6,000+ diverse Indian legal intent examples** using the HuggingFace `Trainer` API (3 epochs, batch size 8, learning rate 2e-5).
+- **Local Fine-Tuned Model:** A `law-ai/InLegalBERT` transformer model fine-tuned on a custom dataset of over **10,000+ diverse Indian legal intent examples** using the HuggingFace `Trainer` API (3 epochs, batch size 8, learning rate 2e-5).
 - **Model Performance:** Achieved a **Macro F1 Score of 94.8%** on the validation set. Per-epoch scores: Epoch 1 → 92.7%, Epoch 2 → 93.5%, Epoch 3 → **94.8%**.
 - **Training Data:** Two datasets merged: `intent_training.jsonl` (original 6-class, remapped) + `intent_training_v2.jsonl` (4,650 new examples across all 19 classes).
 - **Inference:** Runs fully offline. If confidence < 80%, gracefully falls back to a Groq LLM call with a structured prompt listing all 19 categories.
@@ -225,20 +225,9 @@ Based on the **Reflexion technique** (Shinn et al., 2023). After every legal res
 git clone https://github.com/Manas8112/Jansathi.git
 cd Jansathi
 
-# Copy the pre-configured environment file
-cp backend/.env.example backend/.env
-
 # Automated setup (Windows PowerShell)
+# This script will install dependencies, download AI models, configure API keys, and automatically launch both the Frontend and Backend servers.
 .\setup.ps1
-
-# Start Backend (in one terminal)
-cd backend
-.\.venv\Scripts\activate
-uvicorn main:app --reload
-
-# Start Frontend (in a second terminal)
-cd frontend
-npm run dev
 ```
 
 App runs at `http://localhost:3000` (frontend) and `http://localhost:8000/docs` (backend API).
