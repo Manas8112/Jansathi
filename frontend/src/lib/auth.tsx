@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === "development" ? "http://127.0.0.1:8000" : "https://jansathi-ahwr.onrender.com");
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === "development" ? "http://localhost:8000" : "https://jansathi-ahwr.onrender.com");
       const res = await fetch(`${API_URL}/api/auth/me`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!token) return false;
     
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === "development" ? "http://127.0.0.1:8000" : "https://jansathi-ahwr.onrender.com");
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === "development" ? "http://localhost:8000" : "https://jansathi-ahwr.onrender.com");
       const res = await fetch(`${API_URL}/api/user/me`, {
         method: "DELETE",
         headers: {
