@@ -12,6 +12,7 @@ import re
 from agents.state import AgentState
 from knowledge.legal_graph import get_context_for_intent
 from knowledge.jurisdiction_engine import get_jurisdiction_engine
+from utils.language_utils import detect_language
 
 
 def extract_claim_amount(message: str) -> float:
@@ -61,22 +62,42 @@ def graph_lookup_node(state: AgentState) -> dict:
         return {}
 
     latest_message = messages[-1].content
-    claim_amount = extract_claim_amount(latest_message)
-    user_state = extract_state(latest_message)
+    
+    try:
+        lang_code = detect_language(latest_message)
+        if lang_code in ("hi", "hinglish"):
+            import os
+            from langchain_groq import ChatGroq as _ChatGroq
+            _trans_llm = _ChatGroq(model=os.getenv("MODEL_CHEAP", "openai/gpt-oss-20b"), temperature=0.0)
+            _trans_resp = _trans_llm.invoke(f"Translate this to English for legal database search. Return ONLY the English translation, nothing else: {latest_message}")
+            search_query = _trans_resp.content.strip()
+        else:
+            search_query = latest_message
+    except Exception:
+        search_query = latest_message
+
+    print(f"[GraphLookup] Intent: {intent} | Search: '{search_query[:60]}'")
+
+    claim_amount = extract_claim_amount(search_query)
+    user_state = extract_state(search_query)
 
     # 1. Get deterministic facts from knowledge graph (section-level)
-    graph_context = get_context_for_intent(intent, latest_message, claim_amount)
+    graph_context, referenced_nodes = get_context_for_intent(intent, search_query, claim_amount)
 
     # 2. Get jurisdiction facts (forum, fees, deadlines)
     engine = get_jurisdiction_engine()
-    jurisdiction_result = engine.resolve(intent, latest_message, claim_amount, user_state)
+    jurisdiction_result = engine.resolve(intent, search_query, claim_amount, user_state)
     jurisdiction_context = jurisdiction_result.to_prompt_string() if jurisdiction_result else ""
+
+    print(f"[GraphLookup] Graph nodes matched: {len(referenced_nodes) if referenced_nodes else 0}")
+    print(f"[GraphLookup] Jurisdiction data: {'YES' if jurisdiction_context else 'none'}")
 
     # Prepend both to any existing RAG context
     existing_context = state.get("retrieved_context", [])
     new_context = [c for c in [jurisdiction_context, graph_context] if c] + existing_context
 
     return {
-        "retrieved_context": new_context
+        "retrieved_context": new_context,
+        "referenced_nodes": referenced_nodes
     }
 

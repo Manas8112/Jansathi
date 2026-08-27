@@ -1,114 +1,329 @@
+"""
+Intent Router Agent
+===================
+Classifies the user's message into a legal intent category.
+
+Strategy (in order of priority):
+  1. Keyword overrides  — fast, deterministic shortcuts for clear-cut intents
+  2. Local fine-tuned model — loaded only when NOT running on Render and the
+     model file is present and full-size (> 1 MB)
+  3. Groq LLM fallback — always available; used when model is absent/on Render
+
+The `RENDER=true` environment variable is set automatically by Render.com at
+runtime, so this file requires zero code changes to switch between environments:
+  - Local machine with model downloaded → uses local BERT classifier
+  - Render deployment (or no model file) → uses Groq LLM
+"""
 import os
 import json
-import torch
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from agents.state import AgentState
 from utils.llm_utils import strip_think
 from langchain_core.messages import HumanMessage
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 MODEL_DIR = os.path.join(os.path.dirname(__file__), "../models/intent_classifier")
+MODEL_FILE = os.path.join(MODEL_DIR, "model.safetensors")
+MAPPING_FILE = os.path.join(MODEL_DIR, "label_mapping.json")
 
-# 1. Try to load the Local Fine-Tuned Model
+# ---------------------------------------------------------------------------
+# Environment detection
+# ---------------------------------------------------------------------------
+# Render.com sets RENDER=true automatically. We also check that the model file
+# is real (> 1 MB) to guard against Git LFS pointer stubs.
+_is_render = os.getenv("RENDER", "").lower() in ("true", "1", "yes")
+_model_file_ok = (
+    os.path.exists(MODEL_FILE) and os.path.getsize(MODEL_FILE) > 1_000_000
+)
+_use_local_model = (not _is_render) and _model_file_ok
+
+# ---------------------------------------------------------------------------
+# 1. Load local fine-tuned model (only when appropriate)
+# ---------------------------------------------------------------------------
 local_model = None
 local_tokenizer = None
-label_mapping = {}
+label_mapping: dict[int, str] = {}
 
-try:
-    if os.path.exists(MODEL_DIR) and os.path.exists(os.path.join(MODEL_DIR, "model.safetensors")):
-        print("[IntentRouter] Loading local fine-tuned model...")
+if _use_local_model:
+    try:
+        import torch  # noqa: imported conditionally to avoid OOM on Render
+        from transformers import AutoTokenizer, AutoModelForSequenceClassification
+
+        print("[IntentRouter] Local environment detected. Loading fine-tuned model...")
         local_tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
         local_model = AutoModelForSequenceClassification.from_pretrained(MODEL_DIR)
-        
-        # Load label mapping
-        mapping_path = os.path.join(MODEL_DIR, "label_mapping.json")
-        if os.path.exists(mapping_path):
-            with open(mapping_path, "r") as f:
-                mapping = json.load(f)
-                label_mapping = {int(k): v for k, v in mapping.items()}
-        print(f"[IntentRouter] Local model loaded successfully. Classes: {list(label_mapping.values())}")
+        local_model.eval()
+
+        if os.path.exists(MAPPING_FILE):
+            with open(MAPPING_FILE, "r", encoding="utf-8") as f:
+                raw = json.load(f)
+                label_mapping = {int(k): v for k, v in raw.items()}
+        print(f"[IntentRouter] Local model loaded. Classes: {list(label_mapping.values())}")
+    except Exception as exc:
+        print(f"[IntentRouter] Failed to load local model: {exc}. Falling back to Groq.")
+        local_model = None
+        local_tokenizer = None
+        label_mapping = {}
+else:
+    if _is_render:
+        print("[IntentRouter] Render environment detected. Skipping local model — using Groq.")
     else:
-        print("[IntentRouter] Local model not found. Will use Groq fallback.")
-except Exception as e:
-    print(f"[IntentRouter] Failed to load local model: {e}. Will use Groq fallback.")
+        print("[IntentRouter] Local model not found or too small. Using Groq fallback.")
 
-
-# 2. Set up the Groq Fallback
-llm = ChatGroq(
+# ---------------------------------------------------------------------------
+# 2. Groq LLM fallback (always initialised)
+# ---------------------------------------------------------------------------
+_llm = ChatGroq(
     model=os.getenv("MODEL_CHEAP", "openai/gpt-oss-20b"),
-    temperature=0.0
+    temperature=0.0,
 )
 
-intent_prompt = ChatPromptTemplate.from_messages([
-    ("system", "You are an expert Indian legal intent classifier. Read the user's message IN THE CONTEXT of the recent conversation and classify their true intent into exactly ONE of these categories: 'RTI', 'Complaint', 'Draft Document', 'Legal Advice', 'Scheme Info', or 'General'. Return ONLY the category string.\n\nRecent Conversation History:\n{history}"),
-    ("user", "{message}")
+_intent_prompt = ChatPromptTemplate.from_messages([
+    (
+        "system",
+        "You are an expert Indian legal intent classifier. "
+        "Read the user's message IN THE CONTEXT of the recent conversation and classify "
+        "their true intent into exactly ONE of these categories:\n"
+        "'RTI_Central', 'RTI_State', 'RTI_FirstAppeal', 'Police_FIR', "
+        "'General_Legal_Advice', 'Consumer_District', 'Consumer_RERA', "
+        "'Domestic_Violence', 'Cybercrime', 'Tenant_Landlord', 'Cheque_Bounce', "
+        "'Labour_Dispute', 'Legal_Notice', 'Employment_Agreement', 'Contract_Review', "
+        "'Fill_Document', 'Scheme_Info', 'Civic_Info', or 'Chitchat'.\n"
+        "Return ONLY the category string, nothing else.\n\n"
+        "Recent Conversation History:\n{history}",
+    ),
+    ("user", "{message}"),
 ])
 
-fallback_chain = intent_prompt | llm
+_fallback_chain = _intent_prompt | _llm
 
 
-def intent_router_node(state: AgentState):
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+_CIVIC_KEYWORDS = {
+    "modi", "gandhi", "kejriwal", "yogi", "mamata", "rahul", "sonia",
+    "pm", "cm", "minister", "mp", "mla", "governor", "president",
+    "lok sabha", "rajya sabha", "parliament", "vidhan sabha",
+    "judge", "justice", "court", "tribunal", "sebi", "rbi", "nhrc",
+    "scheme", "yojana", "policy", "dda", "mcd", "bmc", "municipal",
+    "electricity board", "water board", "panchayat", "gram sabha",
+    "income tax", "gst", "passport", "aadhaar", "pan card", "voter id",
+}
+
+_BLOCKED_KEYWORDS = [
+    "spiderman", "batman", "superman", "ironman", "avengers", "marvel",
+    "harry potter", "pokemon", "naruto", "anime", "cartoon",
+    "recipe", "cook", "biryani", "butter chicken", "pizza",
+    "planet", "solar system", "galaxy", "dinosaur", "atom",
+    "algebra", "calculus", "equation", "physics", "chemistry",
+]
+
+
+def _is_off_topic(message: str) -> bool:
+    msg_lower = message.lower().strip()
+    # Allow civic / government topics even if they look off-topic
+    if any(kw in msg_lower for kw in _CIVIC_KEYWORDS):
+        return False
+    return any(kw in msg_lower for kw in _BLOCKED_KEYWORDS)
+
+
+def _keyword_override(msg_lower: str) -> str | None:
     """
-    Analyzes the latest user message to determine their legal intent.
-    Uses local fine-tuned model first, falls back to LLM API.
+    Fast keyword-based shortcuts that bypass the ML model entirely.
+    Returns an intent string or None if no override applies.
+    """
+    # Document filling
+    if "fill" in msg_lower and any(
+        kw in msg_lower for kw in ("document", "rti", "notice", "form", "it")
+    ):
+        return "Fill_Document"
+
+    # Cheque bounce
+    if any(
+        kw in msg_lower
+        for kw in (
+            "cheque bounce", "cheque bounced", "check bounce",
+            "dishonoured cheque", "dishonored cheque", "bounced cheque",
+            "negotiable instruments",
+        )
+    ):
+        return "Cheque_Bounce"
+
+    # Domestic violence
+    if any(
+        kw in msg_lower
+        for kw in (
+            "domestic violence", "husband beats", "husband hits",
+            "marital abuse", "wife beating", "498a", "498-a", "pwdva",
+        )
+    ):
+        return "Domestic_Violence"
+
+    # Consumer complaints
+    if any(
+        kw in msg_lower
+        for kw in (
+            "bought", "purchased", "defective product", "consumer forum",
+            "refund refused", "warranty", "e-commerce", "online shopping",
+            "amazon", "flipkart",
+        )
+    ):
+        return "Consumer_District"
+
+    # Cybercrime
+    if any(
+        kw in msg_lower
+        for kw in (
+            "online fraud", "cyber fraud", "otp fraud", "upi fraud",
+            "phishing", "hacked", "morphed photo", "cybercrime", "ransomware",
+        )
+    ):
+        return "Cybercrime"
+
+    return None
+
+
+# Valid intents for normalisation
+_VALID_INTENTS = [
+    "RTI_Central", "RTI_State", "RTI_FirstAppeal", "Police_FIR",
+    "General_Legal_Advice", "Consumer_District", "Consumer_RERA",
+    "Domestic_Violence", "Cybercrime", "Tenant_Landlord", "Cheque_Bounce",
+    "Labour_Dispute", "Legal_Notice", "Employment_Agreement", "Contract_Review",
+    "Fill_Document", "Scheme_Info", "Civic_Info", "Chitchat", "Off-Topic",
+]
+
+_DRAFTING_INTENTS = {
+    "Fill_Document", "Legal_Notice", "RTI_Central", "RTI_State",
+    "RTI_FirstAppeal", "Police_FIR", "Employment_Agreement", "Contract_Review",
+}
+
+_ADVICE_INTENTS = {
+    "General_Legal_Advice", "Consumer_District", "Consumer_RERA",
+    "Domestic_Violence", "Cybercrime", "Tenant_Landlord", "Cheque_Bounce",
+    "Labour_Dispute", "Scheme_Info", "Civic_Info",
+}
+
+
+def intent_router_node(state: AgentState) -> dict:
+    """
+    LangGraph node: classifies user intent and sets next_action.
+
+    Returns a dict with:
+      - user_intent: one of the _VALID_INTENTS
+      - next_action: 'draft_document' | 'retrieve_context' | 'general_chat'
     """
     messages = state.get("messages", [])
     if not messages:
-         return {"user_intent": "General", "next_action": "respond"}
-         
+        return {"user_intent": "General_Legal_Advice", "next_action": "general_chat"}
+
     latest_message = messages[-1].content
-    intent = None
-    
-    # Attempt 1: Local Model Inference
-    if local_model and local_tokenizer and label_mapping:
+    msg_lower = latest_message.lower()
+
+    # ── Chitchat short-circuits ─────────────────────────────────────────────
+    _chitchat_patterns = [
+        "kya kaam", "kya kar", "tumhara kaam", "aap kya", "aap kaise",
+        "what do you do", "what can you do", "who are you", "what are you",
+        "introduce yourself", "aap kaun", "tum kaun", "kaise madad",
+        "kya help", "kya ho tum", "kya hai tum",
+    ]
+    for pattern in _chitchat_patterns:
+        if pattern in msg_lower:
+            print(f"[IntentRouter] Chitchat short-circuit: '{latest_message[:50]}'")
+            return {"user_intent": "Chitchat", "next_action": "general_chat"}
+
+    # ── Short "who is / what is" queries ────────────────────────────────────
+    words = msg_lower.split()
+    _who_patterns = [
+        "who is", "who was", "what is", "tell me about",
+        "kaun hai", "kaun the", "kaun hain", "kon hai",
+        "batao", "ke baare mein", "ke bare mein",
+    ]
+    _legal_anchors = [
+        "section", "rti", "fir", "act", "court", "complaint",
+        "penalty", "punish", "crime", "minister", "cm", "pm",
+        "chief minister", "prime minister", "mp", "mla", "governor",
+        "president", "mayor", "government", "govt", "party", "election",
+        "parliament", "scheme", "yojana", "policy", "commissioner",
+        "judge", "justice",
+    ]
+    if len(words) <= 8:
+        for p in _who_patterns:
+            if p in msg_lower:
+                if not any(lw in msg_lower for lw in _legal_anchors):
+                    print("[IntentRouter] Short 'who is/what is' → General.")
+                    return {"user_intent": "Civic_Info", "next_action": "retrieve_context"}
+
+    # ── Off-topic guard ──────────────────────────────────────────────────────
+    if _is_off_topic(latest_message):
+        print(f"[IntentRouter] Off-topic blocked: '{latest_message[:50]}'")
+        return {"user_intent": "Off-Topic", "next_action": "general_chat"}
+
+    # ── Keyword overrides (deterministic, model-independent) ────────────────
+    intent = _keyword_override(msg_lower)
+    if intent:
+        print(f"[IntentRouter] Keyword override → {intent}")
+
+    # ── Local model inference (local environment only) ───────────────────────
+    if intent is None and local_model is not None:
         try:
-            inputs = local_tokenizer(latest_message, return_tensors="pt", truncation=True, padding=True, max_length=128)
+            import torch
+            inputs = local_tokenizer(
+                latest_message,
+                return_tensors="pt",
+                truncation=True,
+                padding=True,
+                max_length=128,
+            )
             with torch.no_grad():
                 outputs = local_model(**inputs)
-            
+
             probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
-            confidence, predicted_class_id = torch.max(probs, dim=-1)
-            
-            if confidence.item() > 0.80:
-                intent = label_mapping.get(predicted_class_id.item())
-                print(f"[IntentRouter] Local model predicted: {intent} (Confidence: {confidence.item():.2f})")
+            confidence, predicted_id = torch.max(probs, dim=-1)
+
+            # Threshold at 0.40 — 19-class model is confident at this level
+            if confidence.item() > 0.40:
+                intent = label_mapping.get(predicted_id.item())
+                print(
+                    f"[IntentRouter] Local model → {intent} "
+                    f"(confidence={confidence.item():.2f})"
+                )
             else:
-                print(f"[IntentRouter] Local model uncertain (Confidence: {confidence.item():.2f}). Falling back to Groq.")
-                intent = None
-        except Exception as e:
-            print(f"[IntentRouter] Local inference failed: {e}. Falling back to Groq.")
+                print(
+                    f"[IntentRouter] Local model uncertain "
+                    f"(confidence={confidence.item():.2f}) → Groq fallback."
+                )
+        except Exception as exc:
+            print(f"[IntentRouter] Local inference error: {exc} → Groq fallback.")
             intent = None
-            
-    # Attempt 2: Groq Fallback
-    if not intent:
+
+    # ── Groq LLM fallback ───────────────────────────────────────────────────
+    if intent is None:
         history_str = ""
         if len(messages) > 1:
             for m in messages[-5:-1]:
                 role = "User" if isinstance(m, HumanMessage) else "JanSaathi"
-                # Truncate long AI messages in history
                 content = m.content[:300] + "..." if len(m.content) > 300 else m.content
                 history_str += f"{role}: {content}\n"
-                
-        response = fallback_chain.invoke({"message": latest_message, "history": history_str})
-        raw_intent = response.content.strip()
-        intent = strip_think(raw_intent)
-        print(f"[IntentRouter] Groq fallback predicted: {intent}")
-    
-    # Normalize intent string
-    intent_clean = "General"
-    for valid_intent in ["RTI", "Complaint", "Draft Document", "Legal Advice", "Scheme Info", "General"]:
-        if valid_intent.lower() in str(intent).lower():
-            intent_clean = valid_intent
+
+        raw = _fallback_chain.invoke({"message": latest_message, "history": history_str})
+        intent = strip_think(raw.content.strip())
+        print(f"[IntentRouter] Groq fallback → {intent}")
+
+    # ── Normalise to a valid intent ──────────────────────────────────────────
+    intent_clean = "Chitchat"
+    for valid in _VALID_INTENTS:
+        if valid.lower() in str(intent).lower():
+            intent_clean = valid
             break
-    
-    # Simple routing logic based on intent
-    if intent_clean in ["RTI", "Complaint", "Draft Document"]:
+
+    # ── Determine next action ────────────────────────────────────────────────
+    if intent_clean in _DRAFTING_INTENTS:
         next_action = "draft_document"
-    elif intent_clean in ["Legal Advice", "Scheme Info"]:
+    elif intent_clean in _ADVICE_INTENTS:
         next_action = "retrieve_context"
     else:
         next_action = "general_chat"
-        
-    return {"user_intent": intent_clean, "next_action": next_action}
 
+    print(f"[IntentRouter] FINAL → Intent: {intent_clean} | Next: {next_action}")
+    return {"user_intent": intent_clean, "next_action": next_action}

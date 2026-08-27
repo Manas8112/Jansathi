@@ -2,70 +2,143 @@
 
 import Link from "next/link";
 import { ArrowRight, Scale, Shield, FileText } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { ArchitectureShowcase } from "@/components/ArchitectureShowcase";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center justify-center relative overflow-hidden">
+    <div className="min-h-screen bg-[var(--color-bg-base)] text-[var(--color-text-primary)] selection:bg-[var(--color-accent)] selection:text-[#080808]">
       
-      {/* Background Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-600/20 blur-[120px] rounded-full pointer-events-none"></div>
-
-      <div className="z-10 max-w-5xl mx-auto px-6 text-center">
-        
-        {/* Logo/Icon */}
-        <div className="flex justify-center mb-8">
-          <div className="p-4 bg-blue-500/10 rounded-2xl border border-blue-500/20">
-            <Scale className="w-12 h-12 text-blue-400" />
-          </div>
-        </div>
-
-        <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6">
-          Legal Empowerment, <br className="hidden md:block" />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400">
-            Powered by AI.
-          </span>
-        </h1>
-        
-        <p className="text-lg md:text-xl text-gray-400 mb-10 max-w-2xl mx-auto leading-relaxed">
-          JanSaathi is an intelligent legal assistant that drafts RTI applications, consumer complaints, and legal notices for you in seconds. Navigate the Indian legal system with confidence.
-        </p>
-        
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Link 
-            href="/chat"
-            className="group px-8 py-4 bg-white text-black font-semibold rounded-full hover:bg-gray-100 transition-all flex items-center gap-2 hover:scale-105 active:scale-95"
-          >
-            Start Free Consultation
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+      {/* NAVBAR */}
+      <nav className="fixed top-0 left-0 right-0 h-[60px] bg-[rgba(8,8,8,0.85)] backdrop-blur-md border-b border-[var(--color-border-accent)] border-opacity-40 z-50">
+        <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
+          <Link href="/" className="font-heading font-medium text-lg text-[var(--color-accent)] tracking-tight">
+            JanSaathi
           </Link>
-          <Link 
-            href="/login"
-            className="px-8 py-4 bg-[#1a1a1a] border border-[#333] text-white font-semibold rounded-full hover:bg-[#222] transition-colors"
-          >
-            Sign In
-          </Link>
-        </div>
-
-        {/* Feature Grid */}
-        <div className="grid md:grid-cols-3 gap-6 mt-24 text-left">
-          <div className="p-6 bg-[#121212] border border-[#222] rounded-2xl">
-            <Shield className="w-8 h-8 text-purple-400 mb-4" />
-            <h3 className="text-xl font-bold mb-2">Intent Recognition</h3>
-            <p className="text-gray-400 text-sm">Fine-tuned InLegalBERT models instantly route your case to the correct legal procedure.</p>
-          </div>
-          <div className="p-6 bg-[#121212] border border-[#222] rounded-2xl">
-            <Scale className="w-8 h-8 text-blue-400 mb-4" />
-            <h3 className="text-xl font-bold mb-2">Hybrid RAG</h3>
-            <p className="text-gray-400 text-sm">Retrieves exact sections from Indian Bare Acts and Supreme Court precedents using vector search.</p>
-          </div>
-          <div className="p-6 bg-[#121212] border border-[#222] rounded-2xl">
-            <FileText className="w-8 h-8 text-green-400 mb-4" />
-            <h3 className="text-xl font-bold mb-2">Document Generation</h3>
-            <p className="text-gray-400 text-sm">Automatically drafts perfectly formatted RTI and Court complaints ready for download.</p>
+          <div className="flex items-center gap-4">
+            <ThemeToggle />
+            <Link 
+              href="/login" 
+              className="text-sm font-medium text-[var(--color-text-primary)] hover:text-[var(--color-accent)] transition-colors"
+            >
+              Sign in
+            </Link>
+            <Link 
+              href="/chat" 
+              className="h-[34px] px-4 flex items-center justify-center bg-[var(--color-accent)] hover:bg-[var(--color-accent-dim)] text-[#080808] text-sm font-medium rounded transition-colors"
+            >
+              Get started
+            </Link>
           </div>
         </div>
+      </nav>
 
-      </div>
+      {/* HERO SECTION */}
+      <section className="relative min-h-screen pt-[60px] flex items-center overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          
+          <div className="max-w-[560px] z-10">
+            {/* Eyebrow badge */}
+            <div className="inline-flex items-center px-2.5 py-1 mb-6 rounded bg-[var(--color-accent-muted)] border border-[var(--color-accent)] border-opacity-20">
+              <span className="text-[10px] font-medium text-[var(--color-accent)] uppercase tracking-wider">
+                AI-Powered Legal Assistant
+              </span>
+            </div>
+            
+            <h1 className="font-heading font-medium text-[52px] text-[var(--color-text-primary)] leading-[1.1] tracking-[-0.03em] mb-4">
+              Your legal rights, explained. Your documents, drafted.
+            </h1>
+            
+            <p className="text-[18px] text-[var(--color-text-secondary)] leading-[1.65] max-w-[440px] mb-8">
+              Describe your situation in plain language — RTI applications, consumer complaints, legal notices — generated in seconds.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <Link 
+                href="/chat"
+                className="w-full sm:w-auto px-6 py-3.5 bg-[var(--color-accent)] hover:bg-[var(--color-accent-dim)] text-[#080808] font-medium rounded-lg flex items-center justify-center gap-2 transition-colors"
+              >
+                Start a consultation <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link 
+                href="#features"
+                className="w-full sm:w-auto px-6 py-3.5 bg-transparent border border-[var(--color-border-strong)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-elevated)] font-medium rounded-lg text-center transition-colors"
+              >
+                See how it works
+              </Link>
+            </div>
+          </div>
+
+          {/* Right side Document Preview (Desktop only) */}
+          <div className="hidden lg:block relative z-0 perspective-[1000px]">
+            <div 
+              className="bg-[var(--color-bg-surface)] border border-[var(--color-border-strong)] rounded-xl p-8 shadow-2xl w-full max-w-[500px] ml-auto overflow-hidden"
+              style={{ transform: "rotate(2deg)" }}
+            >
+              <div className="flex items-center gap-2 mb-6 pb-4 border-b border-[var(--color-border-dim)]">
+                <div className="w-3 h-3 rounded-full bg-[var(--color-border-strong)]"></div>
+                <div className="w-3 h-3 rounded-full bg-[var(--color-border-strong)]"></div>
+                <div className="w-3 h-3 rounded-full bg-[var(--color-border-strong)]"></div>
+              </div>
+              <div className="font-mono text-[13px] text-[var(--color-text-secondary)] leading-[1.8] space-y-4">
+                <p><span className="text-[var(--color-text-primary)]">FORM A</span></p>
+                <p>Application under section 6(1) of the Right to Information Act, 2005.</p>
+                <p>
+                  <span className="text-[var(--color-text-muted)]">To:</span><br/>
+                  The Public Information Officer,<br/>
+                  Municipal Corporation Department.
+                </p>
+                <p>
+                  <span className="text-[var(--color-text-muted)]">Subject:</span><br/>
+                  Information regarding budget allocation and expenditure for road repairs in Ward 42.
+                </p>
+                <p className="mt-8 border-t border-[var(--color-border-dim)] pt-4 text-[var(--color-accent)]">
+                  &gt; AI processing complete. Ready for download.
+                </p>
+              </div>
+            </div>
+          </div>
+          
+        </div>
+      </section>
+
+      {/* SOCIAL PROOF BAR */}
+      <section className="w-full bg-[var(--color-bg-surface)] border-y border-[var(--color-border-dim)] py-8">
+        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8 text-center divide-y md:divide-y-0 md:divide-x divide-[var(--color-border-dim)]">
+          <div className="pt-4 md:pt-0">
+            <div className="text-[13px] font-medium text-[var(--color-text-secondary)] tracking-wider uppercase mb-1">RTI Applications</div>
+            <div className="font-heading font-medium text-3xl text-[var(--color-text-primary)]">1,420+</div>
+          </div>
+          <div className="pt-4 md:pt-0">
+            <div className="text-[13px] font-medium text-[var(--color-text-secondary)] tracking-wider uppercase mb-1">Consumer Complaints</div>
+            <div className="font-heading font-medium text-3xl text-[var(--color-text-primary)]">850+</div>
+          </div>
+          <div className="pt-4 md:pt-0">
+            <div className="text-[13px] font-medium text-[var(--color-text-secondary)] tracking-wider uppercase mb-1">Legal Notices</div>
+            <div className="font-heading font-medium text-3xl text-[var(--color-text-primary)]">2,100+</div>
+          </div>
+        </div>
+      </section>
+
+      {/* FEATURES SECTION */}
+      <ArchitectureShowcase />
+
+      {/* FOOTER */}
+      <footer className="w-full border-t border-[var(--color-border-dim)] py-8 bg-[var(--color-bg-base)]">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="font-heading font-medium text-[var(--color-text-primary)]">JanSaathi</span>
+            <span className="text-[var(--color-border-strong)]">|</span>
+            <span className="text-sm text-[var(--color-text-secondary)]">Built for Indian citizens</span>
+          </div>
+          <div className="flex items-center gap-6 text-sm font-medium text-[var(--color-text-secondary)]">
+            <Link href="#" className="hover:text-[var(--color-text-primary)] transition-colors">Privacy</Link>
+            <Link href="#" className="hover:text-[var(--color-text-primary)] transition-colors">Terms</Link>
+            <Link href="/login" className="hover:text-[var(--color-text-primary)] transition-colors">Sign in</Link>
+          </div>
+        </div>
+      </footer>
+
     </div>
   );
 }

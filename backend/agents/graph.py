@@ -18,8 +18,8 @@ def route_after_intent(state: AgentState):
 
 
 def route_after_retrieval(state: AgentState):
-    intent = state.get("user_intent", "General")
-    if intent in ["RTI", "Complaint"]:
+    next_action = state.get("next_action", "")
+    if next_action == "draft_document":
         return "draft"
     else:
         return "advise"

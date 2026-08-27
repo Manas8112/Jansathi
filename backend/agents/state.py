@@ -21,3 +21,5 @@ class AgentState(TypedDict):
     jurisdiction_data: Optional[dict]   # Output from JurisdictionEngine
     confidence_score: Optional[float]   # Verifier score (0-10)
     citations: Optional[list[str]]      # Law sections cited in the final response
+    missing_fields: Optional[list[str]] # Missing placeholders to be filled
+    referenced_nodes: Optional[list[dict]] # Knowledge graph nodes

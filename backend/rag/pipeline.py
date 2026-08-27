@@ -2,7 +2,6 @@ import os
 import json
 from collections import Counter
 from rank_bm25 import BM25Okapi
-from sentence_transformers import CrossEncoder
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from rag.chroma_store import get_collection
@@ -13,17 +12,23 @@ class HybridRAGPipeline:
         self.collection = get_collection(collection_name)
         
         # Cross-Encoder for reranking (Wrap in try-except for offline/proxy resilience)
-        try:
-            # Try offline first
-            self.reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-12-v2', max_length=512, local_files_only=True)
-        except Exception:
+        is_render = os.getenv("RENDER") == "true"
+        if is_render:
+            print("Running on Render (limited RAM). Local cross-encoder disabled.")
+            self.reranker = None
+        else:
             try:
-                # If not cached, try downloading normally
-                print("Local cross-encoder not found. Attempting to download from Hugging Face...")
-                self.reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-12-v2', max_length=512)
-            except Exception as e:
-                print(f"WARNING: Could not load CrossEncoder due to network/proxy issues. Reranking is disabled. Error: {e}")
-                self.reranker = None
+                from sentence_transformers import CrossEncoder
+                # Try offline first
+                self.reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-12-v2', max_length=512, local_files_only=True)
+            except Exception:
+                try:
+                    # If not cached, try downloading normally
+                    print("Local cross-encoder not found. Attempting to download from Hugging Face...")
+                    self.reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-12-v2', max_length=512)
+                except Exception as e:
+                    print(f"WARNING: Could not load CrossEncoder due to network/proxy issues. Reranking is disabled. Error: {e}")
+                    self.reranker = None
         
         # LLM for query expansion
         self.llm = ChatGroq(
@@ -146,10 +151,42 @@ class HybridRAGPipeline:
         except:
             return [query]
 
+    def _validate_expanded_queries(self, original_query: str, expansions: list[str]) -> list[str]:
+        actual_expansions = [q for q in expansions if q != original_query]
+        if not actual_expansions:
+            return [original_query]
+            
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", "Given this original legal query and these expansions, mark each expansion as valid (True) if it is a legitimate Indian legal rephrasing, or invalid (False) if off-topic or hallucinated. Return ONLY JSON: {\"valid\": [true, false, ...]}"),
+            ("user", "Original Query: {original_query}\nExpansions:\n{expansions}")
+        ])
+        
+        chain = prompt | self.llm
+        try:
+            expansions_text = "\n".join([f"{i+1}. {q}" for i, q in enumerate(actual_expansions)])
+            res = chain.invoke({"original_query": original_query, "expansions": expansions_text})
+            
+            import re
+            json_match = re.search(r'\{.*\}', res.content.strip(), re.DOTALL)
+            if not json_match:
+                return expansions
+                
+            data = json.loads(json_match.group())
+            valid_flags = data.get("valid", [])
+            
+            filtered = [original_query]
+            for i, is_valid in enumerate(valid_flags):
+                if i < len(actual_expansions) and is_valid:
+                    filtered.append(actual_expansions[i])
+            return filtered
+        except Exception:
+            return expansions
+
     def retrieve(self, query: str, top_n: int = 5) -> list[dict]:
         """Full Hybrid RAG retrieval pipeline."""
         # 1. Query Expansion
         queries = self._expand_query(query)
+        queries = self._validate_expanded_queries(query, queries)
         
         all_vector_results = []
         all_bm25_results = []
@@ -169,6 +206,10 @@ class HybridRAGPipeline:
         # 4. Cross-Encoder Reranking
         final_results = self._rerank(query, merged_candidates, top_n=top_n)
         
+        print(f"[RAG] Retrieved {len(final_results)} chunks after reranking")
+        if final_results:
+            print(f"[RAG] Top result preview: '{str(final_results[0])[:100]}'")
+            
         return final_results
 
 # Singleton instance

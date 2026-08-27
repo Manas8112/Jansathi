@@ -1,11 +1,11 @@
 <div align="center">
-  <h1>JanSaathi</h1>
+  <h1>JanSaathi 🇮🇳</h1>
   <p><strong>Agentic AI Legal & Civic Reasoning Engine for Indian Citizens</strong></p>
-  <p>Built with LangGraph, Hybrid RAG, NetworkX Knowledge Graphs, and a Custom-Trained Intent Classifier</p>
+  <p>Built with LangGraph · Hybrid RAG · NetworkX Knowledge Graphs · Custom 19-Class InLegalBERT Classifier · Reflexion Self-Correction</p>
 </div>
 
 > **Quick Links:**
-> [Setup & Run](#running-locally) · [Architecture Diagram](#state-graph-langgraph-pipeline) · [Technical Deep-Dive](#technical-deep-dive) · [Repo Structure](#repository-structure)
+> [Setup & Run](#running-locally) · [Architecture](#state-graph-langgraph-pipeline) · [Technical Deep-Dive](#technical-deep-dive) · [Repo Structure](#repository-structure)
 
 ---
 
@@ -15,9 +15,9 @@ Over 80% of India's population cannot afford legal representation. Existing AI c
 
 1. They hallucinate non-existent Indian Penal Code sections and fake case precedents.
 2. They have zero awareness of India's jurisdiction hierarchy (which forum to file in depends on claim amount, state, and case type — a generic LLM has no mechanism to compute this).
-3. They cannot perform multi-step agentic workflows: analyze a PDF contract, flag illegal clauses, draft a formal legal notice, self-verify the output, and persist the document — all in one pipeline.
+3. They cannot perform multi-step agentic workflows: classify intent, retrieve verified law, draft a formal document, self-verify the output, and persist it — all in one pipeline.
 
-JanSaathi solves all three problems through a modular multi-agent architecture where each agent is a narrow specialist, and deterministic knowledge systems constrain every LLM output.
+JanSaathi solves all three through a modular multi-agent architecture where every agent is a narrow specialist, and deterministic knowledge systems constrain every LLM output.
 
 ---
 
@@ -27,32 +27,43 @@ JanSaathi solves all three problems through a modular multi-agent architecture w
 
 ```mermaid
 graph TD
-    A["User Message"] --> B["Intent Router Node"]
-    
-    B -->|"RTI / Complaint / Draft"| C["Knowledge Graph Lookup"]
-    B -->|"Legal Advice / Scheme Info"| C
-    B -->|"General Chitchat"| G["General Chat Node"]
-    
-    C --> D["Hybrid RAG Retrieval"]
-    
-    D -->|"RTI or Complaint intent"| E["Drafter Agent"]
-    D -->|"Legal Advice intent"| F["Legal Advisor Agent"]
-    
-    E --> H["Verifier Agent"]
+    A["User Message"] --> B["Intent Router
+(19-class InLegalBERT, 94.8% F1)"]
+
+    B -->|"Chitchat / Off-Topic"| G["General Chat Node"]
+    B -->|"Any Legal Intent"| C["Knowledge Graph Lookup
+(NetworkX + Jurisdiction Engine)"]
+
+    C --> D["Hybrid RAG Retrieval
+(BM25 + Vector + RRF + CrossEncoder)"]
+
+    D -->|"Drafting Intents
+(RTI, FIR, Notice, etc.)"| E["Drafter Agent"]
+    D -->|"Advice Intents
+(Legal, Consumer, Civic, etc.)"| F["Legal Advisor Agent"]
+
+    E --> H["Verifier Agent
+(Reflexion — score less than 7.5 triggers re-draft)"]
     F --> H
-    
-    H -->|"Score < 7: re-draft"| E
-    H -->|"Score >= 7: accept"| I["Output to User"]
+
+    H --> I["Response to User"]
     G --> I
+
+    Doc["Upload PDF/Image"] --> OCR{"Has Selectable Text?"}
+    OCR -->|"Yes"| PyMuPDF["PyMuPDF Parser"]
+    OCR -->|"No (Scanned)"| OCRAPI["OCR.Space API"]
+    PyMuPDF --> Analyzer["Contract Analyzer Agent"]
+    OCRAPI --> Analyzer
+    Analyzer --> I
 ```
 
-### How It Works (Step by Step)
+### Intent Classes (19 Total)
 
-1. User sends a message via the Next.js frontend.
-2. The FastAPI backend receives it in `api/chat_router.py`, loads the conversation history from SQLite, and constructs an `AgentState` TypedDict.
-3. The `AgentState` enters the LangGraph `StateGraph` (defined in `agents/graph.py`), which is compiled with `workflow.compile()`.
-4. The graph routes through specialized nodes depending on intent, accumulating `retrieved_context`, `jurisdiction_data`, `drafted_document`, and `confidence_score` fields in the state.
-5. The final AI message is extracted, `<think>` tags are stripped (for reasoning models like Qwen), `<document>` tags are parsed and saved to the database, and the response is returned to the frontend.
+| Pipeline | Intent Classes |
+|----------|---------------|
+| **Draft Document** | `RTI_Central`, `RTI_State`, `RTI_FirstAppeal`, `Police_FIR`, `Legal_Notice`, `Employment_Agreement`, `Contract_Review`, `Fill_Document` |
+| **Legal Advice** | `General_Legal_Advice`, `Consumer_District`, `Consumer_RERA`, `Domestic_Violence`, `Cybercrime`, `Tenant_Landlord`, `Cheque_Bounce`, `Labour_Dispute`, `Scheme_Info`, `Civic_Info` |
+| **General Chat** | `Chitchat` |
 
 ---
 
@@ -67,124 +78,107 @@ graph TD
 
 ### 1. Intent Classification (`agents/intent_router.py`)
 
-The first node in the graph classifies the user's message into one of six categories: `RTI`, `Complaint`, `Draft Document`, `Legal Advice`, `Scheme Info`, or `General`.
+The first node in the graph classifies the user's message into one of **19 specialized categories**.
 
 **How it works:**
-- **Local Fine-Tuned Model:** The system natively uses a `law-ai/InLegalBERT` transformer model fine-tuned on a custom dataset of 300+ diverse legal intents.
-- **Training Data (`intent_training.jsonl`):** We expanded our initial 15-sample dataset to over 300 unique, hand-crafted queries covering RTI applications, consumer complaints, legal notice drafting, and government scheme inquiries.
-- **Inference & Fallback:** The local model (`model.safetensors` - 437MB) runs entirely offline with zero latency. If the model is missing or fails, it gracefully falls back to a fast LLM (Groq) using a structured prompt with the last 4 conversation turns.
-- Based on the predicted category, the `route_after_intent()` function in `graph.py` selects the next edge (e.g., non-general intents go to the `knowledge_graph` node).
-
-**Why not just use the main LLM for everything?** Routing through a cheap, fast model (temperature=0.0) saves tokens and latency. The expensive model is reserved only for the Drafter and Advisor nodes where quality matters.
+- **Local Fine-Tuned Model:** A `law-ai/InLegalBERT` transformer model fine-tuned on a custom dataset of over **6,000+ diverse Indian legal intent examples** using the HuggingFace `Trainer` API (3 epochs, batch size 8, learning rate 2e-5).
+- **Model Performance:** Achieved a **Macro F1 Score of 94.8%** on the validation set. Per-epoch scores: Epoch 1 → 92.7%, Epoch 2 → 93.5%, Epoch 3 → **94.8%**.
+- **Training Data:** Two datasets merged: `intent_training.jsonl` (original 6-class, remapped) + `intent_training_v2.jsonl` (4,650 new examples across all 19 classes).
+- **Inference:** Runs fully offline. If confidence < 80%, gracefully falls back to a Groq LLM call with a structured prompt listing all 19 categories.
+- **Pre-checks:** Before the model runs, chitchat patterns and blocked keywords (fictional characters, recipes, off-topic) are detected by string matching for instant routing with zero latency.
 
 ---
 
 ### 2. Legal Knowledge Graph (`knowledge/legal_graph.py`)
 
-This is a 441-line directed graph built with `networkx.DiGraph()` encoding the structural relationships of Indian law. It contains four layers:
+A 441-line directed graph built with `networkx.DiGraph()` encoding the structural relationships of Indian law. It contains four layers:
 
 | Layer | Node Type | Examples |
 |-------|-----------|----------|
 | Layer 1 | Laws | `RTI_ACT_2005`, `CPA_2019`, `RERA_2016`, `IPC_1860`, `CrPC_1973`, `POSH_2013`, `EPF_ACT_1952` |
-| Layer 2 | Sections | `RTI_S6` (filing procedure), `RTI_S7` (30-day deadline), `CPA_S35` (District Commission filing), `IPC_S420` (cheating), `IPC_S498A` (domestic violence) |
-| Layer 3 | Forums | `DISTRICT_CONSUMER_COMMISSION` (claims up to 50L), `STATE_CONSUMER_COMMISSION` (50L–2Cr), `NATIONAL_CONSUMER_COMMISSION` (above 2Cr), `RERA_AUTHORITY`, `POLICE_FIR` |
-| Layer 4 | Remedies | `RTI_REMEDY` (step-by-step filing), `CONSUMER_REMEDY` (legal notice → e-Daakhil → hearing), `CRIMINAL_REMEDY` (evidence → FIR → Section 156(3)) |
+| Layer 2 | Sections | `RTI_S6` (filing procedure), `RTI_S7` (30-day deadline), `CPA_S35` (District Commission), `IPC_S420` (cheating), `IPC_S498A` (domestic violence) |
+| Layer 3 | Forums | `DISTRICT_CONSUMER_COMMISSION` (<₹50L), `STATE_CONSUMER_COMMISSION` (₹50L–₹2Cr), `NATIONAL_CONSUMER_COMMISSION` (>₹2Cr), `RERA_AUTHORITY`, `POLICE_FIR` |
+| Layer 4 | Remedies | `RTI_REMEDY`, `CONSUMER_REMEDY`, `CRIMINAL_REMEDY` |
 
-**Edges encode relationships:**
-- `contains` (RTI_ACT_2005 → RTI_S6)
-- `triggers_after_filing` (RTI_S6 → RTI_S7)
-- `escalates_to_if_no_response` (RTI_S7 → RTI_S19_FIRST_APPEAL)
-- `remedy_via` (IPC_S420 → POLICE_FIR)
-- `appeal_to` (DISTRICT_CONSUMER_COMMISSION → STATE_CONSUMER_COMMISSION)
+**Edges encode legal relationships:** `contains`, `triggers_after_filing`, `escalates_to_if_no_response`, `remedy_via`, `appeal_to`.
 
-**The key function `get_context_for_intent()`** traverses this graph and returns a formatted string of verified legal facts. This string is injected into the LLM prompt as a `=== VERIFIED LEGAL FACTS (from Knowledge Graph — DO NOT contradict these) ===` block, acting as a hard constraint on what the LLM can output.
-
-**Section-specific lookup:** If the user mentions "Section 420" in their message, the function `get_section_facts()` directly looks up `IPC_S420` in the graph, retrieves its punishment, cognizability, bail status, and connected remedies via `G.out_edges()`, and injects all of this before the LLM even sees the query.
+The key function `get_context_for_intent()` traverses this graph and injects verified facts as a `=== VERIFIED LEGAL FACTS (DO NOT contradict) ===` block into the LLM prompt — acting as a hard constraint against hallucination.
 
 ---
 
 ### 3. Jurisdiction Engine (`knowledge/jurisdiction_engine.py`)
 
-A purely deterministic rules engine (310 lines, zero LLM involvement) that maps `{case_type, claim_amount, state}` to exact:
+A purely **deterministic rules engine** (310 lines, **zero LLM involvement**) that maps `{case_type, claim_amount, state}` to exact:
 - **Forum** (District / State / National Commission)
-- **Filing fees** (₹0 for claims under ₹5 lakh, ₹200 for ₹5L–10L, etc.)
+- **Filing fees** (₹0 for claims <₹5 lakh, ₹200 for ₹5L–₹10L, etc.)
 - **Limitation periods** (2 years from cause of action for consumer disputes)
 - **Portal URLs** (https://edaakhil.nic.in, state-specific RERA portals)
-- **Escalation paths** (District → State → National → Supreme Court)
-- **Required documents** (invoice, payment proof, legal notice copy, etc.)
+- **Escalation paths** and **Required documents**
 
-**Supported case types:** Consumer disputes (with amount-based forum routing), RTI applications (central vs. state PIO routing), RERA/builder disputes (with state-specific portal mapping for Maharashtra, Karnataka, Delhi, UP, Gujarat, Tamil Nadu, Telangana, Rajasthan), and workplace/labour disputes.
+Supported case types: Consumer disputes (amount-based forum routing), RTI (central vs. state PIO routing), RERA/builder disputes (state-specific portal mapping for 9 states), workplace/labour disputes.
 
-The output is a `JurisdictionResult` dataclass whose `.to_prompt_string()` method formats all fields as `=== JURISDICTION ENGINE OUTPUT (Deterministic — Ground Truth) ===` and injects it into the LLM context alongside the Knowledge Graph output.
-
-**Why this matters:** The LLM can never hallucinate the wrong court, wrong fee, or wrong deadline because the engine provides the answer first, and the prompt instructs the LLM to not contradict verified facts.
+Output is injected as `=== JURISDICTION ENGINE OUTPUT (Deterministic — Ground Truth) ===` alongside Knowledge Graph context. The LLM is instructed never to contradict these verified facts.
 
 ---
 
 ### 4. Hybrid RAG Pipeline (`rag/pipeline.py`)
 
-A four-stage retrieval pipeline that grounds the LLM in actual legal documents stored in ChromaDB:
+A four-stage retrieval pipeline:
 
-**Stage 1 — Query Expansion:** The user query is sent to a fast LLM that generates 3 alternative phrasings using formal Indian legal terminology. All 4 queries (original + expansions) are searched in parallel.
+**Stage 1 — Query Expansion:** Fast LLM generates 3 alternate phrasings using formal Indian legal terminology. All 4 queries searched in parallel.
 
 **Stage 2 — Dual Search:**
 - **Vector search** via ChromaDB using `BAAI/bge-small-en-v1.5` embeddings (384-dim, cosine similarity via HNSW index).
-- **BM25 keyword search** via `rank_bm25.BM25Okapi` initialized over the entire corpus. This catches exact legal term matches that embedding models miss (e.g., "Section 498A" as a keyword).
+- **BM25 keyword search** via `rank_bm25.BM25Okapi` over the full corpus. Catches exact legal term matches that embeddings miss (e.g., "Section 498A").
 
-**Stage 3 — Reciprocal Rank Fusion (RRF):** Vector and BM25 results are merged using RRF with configurable weights (default: 0.6 vector, 0.4 BM25). The formula is `score = weight * (1 / (60 + rank))` per result source. Documents appearing in both lists get boosted scores.
+**Stage 3 — Reciprocal Rank Fusion (RRF):** Vector and BM25 results merged with configurable weights (0.6 vector, 0.4 BM25). Formula: `score = weight * (1 / (60 + rank))`.
 
-**Stage 4 — Cross-Encoder Reranking:** The merged candidates are passed through `cross-encoder/ms-marco-MiniLM-L-12-v2` (a 33M parameter cross-encoder) which scores each `(query, document)` pair for semantic relevance. The top-N results (default: 3) by rerank score are returned.
+**Stage 4 — Cross-Encoder Reranking:** Merged candidates re-scored by `cross-encoder/ms-marco-MiniLM-L-12-v2` (33M params). Top-3 results by semantic relevance returned.
 
 ---
 
 ### 5. Drafter Agent (`agents/drafter.py`)
 
-When the intent is `RTI` or `Complaint`, this agent generates a complete, legally structured document.
+Three specialized nodes:
 
-**Key implementation details:**
-- The system prompt enforces XML output: the drafted document must be wrapped in `<document>...</document>` tags. The `chat_router.py` backend uses `re.search(r'<document>(.*?)</document>', content, flags=re.DOTALL)` to extract the document, save it to the `saved_documents` table, and strip it from the chat reply.
-- The prompt requires formal Indian legal language with correct headings (To, Subject, Facts, Prayer/Relief Sought), specific Act/Section citations, and placeholders like `[YOUR FULL NAME]`, `[DATE]`, `[DISTRICT]` where user data is missing.
-- Context window management: only the last 6 messages (3 conversation turns) are included in the history to prevent token overflow on the Groq API (2048 max_tokens).
-- Jinja2 templates exist for RTI Form A, Consumer Complaints, RERA Complaints, and Legal Notices (`backend/templates/`) for PDF rendering via WeasyPrint.
+**`draft_document_node()`** — For drafting intents (RTI, FIR, Legal Notice, etc.):
+- Enforces XML output: document inside `<document>...</document>` tags. The backend uses regex to extract, save to `saved_documents` table, and strip from the chat reply.
+- Requires formal Indian legal headings with `[YOUR FULL NAME]`, `[DATE]`, `[DISTRICT]` placeholders where user data is missing.
+- Auto-detects language and forces the LLM to reply in the same language (Hindi/Hinglish/English).
+
+**`legal_advice_node()`** — For advice intents:
+- Generates structured advice with ⚖️ Your Legal Rights, 🗺️ Action Roadmap, 📞 Key Contacts sections.
+- Falls back to conversational reply for specific follow-up questions.
+
+**`general_chat_node()`** — For chitchat and civic info queries.
 
 ---
 
 ### 6. Verifier Agent — Reflexion Loop (`agents/verifier.py`)
 
-Based on the Reflexion technique (Shinn et al., 2023). After every legal response, this node acts as an adversarial critic.
+Based on the **Reflexion technique** (Shinn et al., 2023). After every legal response, this node acts as an adversarial critic.
 
-**How it works:**
-1. The Verifier extracts the last `AIMessage` and the last `HumanMessage` from the state.
-2. It sends both to a fast LLM with a structured evaluation prompt that checks 6 criteria: actionable roadmap, law section citations, specific forum/authority, deadline/timeframe, non-hedging language, and relevance to the question.
-3. The LLM returns a JSON object: `{"passes": true/false, "issues": [...], "score": 0-10}`.
-4. If `passes == false` AND `score < 7` AND issues are non-empty, the Verifier triggers a re-draft: it sends the issues list + the original context to a correction LLM, which generates an improved response.
-5. The corrected response replaces the original `AIMessage` in the state.
-6. **Drafted documents bypass verification** — if `state["drafted_document"]` exists, the Verifier returns immediately, because documents have their own structural constraints and should not be forced into the "Action Roadmap" format.
+**8 evaluation criteria:** actionable roadmap, law section citations, specific forum/authority, deadline/timeframe, non-hedging language, relevance, no hallucinated law sections, no contradictions with conversation history.
+
+**Scoring:** Fast LLM returns `{"passes": bool, "issues": [...], "score": 0-10}`. If `score < 7.5`, a larger correction LLM re-drafts with the issues list as explicit feedback. Drafted documents and guardrail refusals bypass verification automatically.
 
 ---
 
-### 7. Contract Analysis (`agents/analyzer.py` + `api/documents.py`)
+### 7. Language Awareness (`utils/language_utils.py`)
 
-Users can upload PDF files (lease agreements, employment contracts, vendor agreements) for AI-powered clause analysis.
+- `detect_language()` — detects Hindi (Devanagari Unicode block >10%), Hinglish (keyword matching, threshold ≥ 2 words), or English.
+- `get_language_instruction()` — returns a `LANGUAGE RULE` string injected into every LLM system prompt, forcing reply language to match user's input.
+- Graph Lookup node translates Hindi/Hinglish to English before querying the vector database to ensure retrieval quality.
+
+---
+
+### 8. Contract Analysis (`agents/analyzer.py` + `api/documents.py`)
 
 **Pipeline:**
-1. `api/documents.py` receives the `UploadFile`, reads the byte stream, and uses `PyPDF2.PdfReader` to extract text from up to 10 pages.
-2. The extracted text (truncated to 15,000 characters) is sent to `analyzer.py`, which evaluates it against Indian judicial parameters:
-   - Tenant contracts: 11-month lock-in without exit, non-refundable deposits, arbitrary eviction, landlord right to enter without notice.
-   - Employment contracts: Illegal bonds, arbitrary termination, PF withholding, extreme non-competes.
-   - Consumer contracts: Unfair penalties, waiver of right to sue, hidden charges.
-3. Problematic clauses are flagged with the clause text, why it violates Indian law, and what the user should negotiate.
-4. The analysis is saved to the conversation history (both the human context and AI response as `DBMessage` rows).
-
----
-
-### 8. Pydantic Guardrail Schemas (`guardrails/schemas.py`)
-
-We defined strict Pydantic models to validate structured outputs:
-- `LegalResponse`: `summary`, `applicable_laws: list[LawCitation]`, `rights_identified`, `remedies: list[Remedy]`, `action_steps: list[ActionStep]`, `confidence: Literal["high", "medium", "low"]`.
-- `RTIApplication`: `addressed_to`, `department`, `subject`, `information_points`, `fee_info`, `legal_reference`.
-- `LegalNotice`: `addressed_to`, `facts`, `legal_basis`, `demand`, `deadline_days`.
-- `SchemeMatch`: `scheme_name`, `eligibility_status: Literal["eligible", "likely_eligible", "check_locally"]`, `documents_needed`, `where_to_apply`.
+1. `api/documents.py` receives `UploadFile`, uses `PyPDF2.PdfReader` to extract text from up to 10 pages.
+2. **OCR.Space API fallback** — If PDF is scanned/image-based, converts first page to PNG and calls OCR.Space API. No heavy Tesseract dependency needed on the server.
+3. `analyzer.py` evaluates against Indian judicial parameters: tenant contracts (11-month lock-in, non-refundable deposits, arbitrary eviction), employment contracts (illegal bonds, PF withholding, extreme non-competes), consumer contracts (unfair penalties, waiver of right to sue).
+4. Problematic clauses flagged with the clause text, why it violates Indian law, and what to negotiate.
 
 ---
 
@@ -195,12 +189,11 @@ We defined strict Pydantic models to validate structured outputs:
 - JWT-based authentication with bcrypt password hashing
 - SQLAlchemy async sessions with SQLite
 - Database models: `User`, `Conversation`, `Message`, `SavedDocument`
-- CRUD APIs: conversations (list, get, delete), documents (save, list, get, delete, analyze)
-- `<think>` tag stripping utility for reasoning models (Qwen, DeepSeek) that leak chain-of-thought
+- `<think>` tag stripping utility for reasoning models (Qwen, DeepSeek)
 
 **Frontend (Next.js 14 + Tailwind CSS):**
 - Dark-mode native UI with pitch-black background
-- `react-markdown` + `remark-gfm` + `rehype-raw` for rendering legal tables, bold citations, and structured advice
+- `react-markdown` + `remark-gfm` + `rehype-raw` for rendering legal tables, bold citations, structured advice
 - PDF upload button with drag-and-drop for contract analysis
 - Chat sidebar with conversation history and per-chat delete buttons
 - My Documents dashboard with preview and PDF download
@@ -208,32 +201,47 @@ We defined strict Pydantic models to validate structured outputs:
 
 ---
 
+## Key Differentiators vs Generic AI Chatbots
+
+| Feature | ChatGPT / Claude | JanSaathi |
+|---------|-----------------|-----------|
+| Hallucinated law sections | ❌ Common | ✅ Blocked by Knowledge Graph hard constraints |
+| Wrong court / jurisdiction | ❌ Common | ✅ Deterministic rules engine computes exact forum |
+| Reply in user's language | ❌ Ignores | ✅ Auto-detects Hindi/Hinglish/English, replies to match |
+| Self-correction | ❌ None | ✅ Reflexion loop scores every response, re-drafts if <7.5/10 |
+| Domain restriction | ❌ Answers anything | ✅ Hard guardrail blocks off-topic, fiction, recipes |
+| Intent specialization | ❌ Generic | ✅ 19 specialized classes, 94.8% accuracy |
+| Document persistence | ❌ None | ✅ Drafted docs saved to DB, downloadable as PDF |
+| Scanned PDF support | ❌ None | ✅ OCR.Space API fallback for image-based forms |
+
+---
+
 ## Running Locally
 
-**Prerequisites:** Python 3.10+, Node.js v18+, Git LFS
+**Prerequisites:** Python 3.10+, Node.js v18+
 
 ```bash
-# Clone (Git LFS pulls the 437MB intent classifier automatically)
+# Clone the repository
 git clone https://github.com/Manas8112/Jansathi.git
 cd Jansathi
 
-# Copy the pre-configured environment file (API keys included)
+# Copy the pre-configured environment file
 cp backend/.env.example backend/.env
 
-# Automated setup (Windows)
+# Automated setup (Windows PowerShell)
 .\setup.ps1
 
-# Start Backend
+# Start Backend (in one terminal)
 cd backend
 .\.venv\Scripts\activate
 uvicorn main:app --reload
 
-# Start Frontend (separate terminal)
+# Start Frontend (in a second terminal)
 cd frontend
 npm run dev
 ```
 
-The app will be live at `http://localhost:3000` (frontend) and `http://localhost:8000` (backend API).
+App runs at `http://localhost:3000` (frontend) and `http://localhost:8000/docs` (backend API).
 
 ---
 
@@ -243,36 +251,47 @@ The app will be live at `http://localhost:3000` (frontend) and `http://localhost
 Jansathi/
 ├── backend/
 │   ├── agents/
-│   │   ├── graph.py              # LangGraph StateGraph definition & compilation
-│   │   ├── state.py              # AgentState TypedDict (messages, intent, context, score)
-│   │   ├── intent_router.py      # Intent classification node
-│   │   ├── graph_lookup.py       # Knowledge Graph + Jurisdiction Engine injection
+│   │   ├── graph.py              # LangGraph StateGraph — all nodes, edges, conditional routing
+│   │   ├── state.py              # AgentState TypedDict (messages, intent, context, score, etc.)
+│   │   ├── intent_router.py      # 19-class intent classification (local model + Groq fallback)
+│   │   ├── graph_lookup.py       # Knowledge Graph + Jurisdiction Engine injection node
 │   │   ├── retriever.py          # Hybrid RAG retrieval node
-│   │   ├── drafter.py            # Document drafting + legal advice + general chat nodes
-│   │   ├── verifier.py           # Reflexion self-correction node
+│   │   ├── drafter.py            # Draft, Advice, and General Chat nodes
+│   │   ├── verifier.py           # Reflexion self-correction node (8-criteria critic)
 │   │   └── analyzer.py           # PDF contract analysis agent
 │   ├── knowledge/
 │   │   ├── legal_graph.py        # NetworkX DiGraph (441 lines, 4-layer legal ontology)
-│   │   └── jurisdiction_engine.py # Deterministic rules engine (310 lines, 0 LLM)
+│   │   └── jurisdiction_engine.py # Deterministic rules engine (310 lines, 0 LLM calls)
 │   ├── rag/
 │   │   ├── chroma_store.py       # ChromaDB + BGE embeddings
-│   │   └── pipeline.py           # 4-stage hybrid RAG (expand → search → RRF → rerank)
+│   │   └── pipeline.py           # 4-stage hybrid RAG (expand → BM25+vector → RRF → rerank)
 │   ├── guardrails/
 │   │   └── schemas.py            # Pydantic models for structured legal outputs
-│   ├── templates/                # Jinja2 templates for RTI, Legal Notice, Consumer, RERA
+│   ├── templates/                # Jinja2 templates for RTI, Legal Notice, Consumer, RERA PDFs
 │   ├── utils/
-│   │   ├── llm_utils.py          # <think> tag stripping for reasoning models
-│   │   └── template_renderer.py  # Jinja2 → HTML → PDF (WeasyPrint)
+│   │   ├── llm_utils.py          # think-tag stripping for reasoning models
+│   │   ├── language_utils.py     # Hindi/Hinglish/English detection + LLM instruction injection
+│   │   ├── placeholder_utils.py  # Extracts [PLACEHOLDER] fields from drafted documents
+│   │   └── template_renderer.py  # Jinja2 to HTML to PDF (WeasyPrint)
 │   ├── auth/                     # JWT auth, bcrypt, SQLAlchemy models
 │   ├── api/
 │   │   ├── chat_router.py        # /api/chat/ endpoints (send, list, delete conversations)
-│   │   └── documents.py          # /api/documents/ endpoints (CRUD + PDF analysis)
+│   │   └── documents.py          # /api/documents/ endpoints (CRUD + PDF analysis + OCR)
+│   ├── training/
+│   │   ├── retrain_classifier_v2.py  # Fine-tuning script (3 epochs, 94.8% F1, 19 classes)
+│   │   └── ingest_knowledge_base.py  # ChromaDB ingestion script
+│   ├── data/
+│   │   └── datasets/
+│   │       ├── intent_training.jsonl    # Original 6-class dataset (~1,500 examples)
+│   │       └── intent_training_v2.jsonl # 19-class dataset (4,650 examples)
 │   └── models/
-│       └── intent_classifier/    # Fine-tuned transformer weights (Git LFS)
+│       └── intent_classifier/    # Fine-tuned InLegalBERT (438MB, 94.8% F1, 19 classes)
 ├── frontend/
 │   └── src/app/
 │       ├── login/page.tsx        # Auth UI (login + register)
 │       ├── chat/page.tsx         # Main chat interface with sidebar
 │       └── dashboard/page.tsx    # My Documents dashboard with PDF export
-└── setup.ps1                     # One-command automated setup script
+├── setup.ps1                     # One-command automated setup script
+└── README.md                     # This file
 ```
+

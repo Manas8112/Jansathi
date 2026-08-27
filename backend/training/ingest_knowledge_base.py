@@ -26,6 +26,11 @@ Run with: python training/ingest_knowledge_base.py
 
 import sys
 import os
+import glob
+try:
+    import PyPDF2
+except ImportError:
+    PyPDF2 = None
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from dotenv import load_dotenv
@@ -299,6 +304,87 @@ def ingest_knowledge_base():
     existing = col.get()
     existing_ids = set(existing['ids'])
     print(f"Existing documents in ChromaDB: {len(existing_ids)}")
+    
+    # Process files from backend/data/documents/ and backend/data/raw_laws/
+    doc_dirs = [
+        os.path.join(os.path.dirname(__file__), '../data/documents'),
+        os.path.join(os.path.dirname(__file__), '../data/raw_laws')
+    ]
+    for doc_dir in doc_dirs:
+        if os.path.exists(doc_dir):
+            print(f"Scanning {doc_dir} for documents...")
+        for filepath in glob.glob(os.path.join(doc_dir, "*.*")):
+            filename = os.path.basename(filepath)
+            ext = os.path.splitext(filename)[1].lower()
+            text = ""
+            
+            if ext == '.txt':
+                try:
+                    with open(filepath, 'r', encoding='utf-8') as f:
+                        text = f.read()
+                except Exception as e:
+                    print(f"Error reading {filename}: {e}")
+            elif ext == '.pdf' and PyPDF2 is not None:
+                try:
+                    with open(filepath, 'rb') as f:
+                        reader = PyPDF2.PdfReader(f)
+                        text = "\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
+                except Exception as e:
+                    print(f"Error reading {filename}: {e}")
+            
+            if text:
+                from langchain_text_splitters import RecursiveCharacterTextSplitter
+                splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+                chunks = splitter.split_text(text)
+                for i, chunk in enumerate(chunks):
+                    doc_id = f"doc_{filename}_{i}"
+                    KNOWLEDGE_BASE.append({
+                        "id": doc_id,
+                        "title": filename,
+                        "type": "document",
+                        "category": "External Document",
+                        "text": chunk
+                    })
+                print(f"Added {len(chunks)} chunks from {filename}")
+
+    # Process legal_qa_corpus.json
+    qa_file = os.path.join(os.path.dirname(__file__), '../data/datasets/legal_qa_corpus.json')
+    if os.path.exists(qa_file):
+        try:
+            with open(qa_file, 'r', encoding='utf-8') as f:
+                qa_data = json.load(f)
+            for i, qa in enumerate(qa_data):
+                KNOWLEDGE_BASE.append({
+                    "id": f"qa_{i}",
+                    "title": f"QA: {qa.get('category', 'Legal')}",
+                    "type": "qa_pair",
+                    "category": qa.get('category', 'General'),
+                    "text": f"Q: {qa.get('question')}\nA: {qa.get('answer')}\nReference: {qa.get('law_reference')}"
+                })
+            print(f"Added {len(qa_data)} QA pairs from {os.path.basename(qa_file)}")
+        except Exception as e:
+            print(f"Error reading QA file: {e}")
+
+    # Process bns_2023_sections.json
+    bns_file = os.path.join(os.path.dirname(__file__), '../data/datasets/bns_2023_sections.json')
+    if os.path.exists(bns_file):
+        try:
+            with open(bns_file, 'r', encoding='utf-8') as f:
+                bns_data = json.load(f)
+            for i, sec in enumerate(bns_data):
+                text = f"Section: {sec.get('section')}\nTitle: {sec.get('title')}\nDescription: {sec.get('description')}\nPunishment: {sec.get('punishment')}\nCognizable: {sec.get('cognizable')}\nBailable: {sec.get('bailable')}\nIPC Equivalent: {sec.get('ipc_equivalent')}"
+                KNOWLEDGE_BASE.append({
+                    "id": f"bns2023_{sec.get('section', '').replace(' ', '_')}_{i}",
+                    "title": f"BNS 2023 {sec.get('section')}: {sec.get('title')}",
+                    "type": "bare_act",
+                    "category": "Criminal Law",
+                    "text": text
+                })
+            print(f"Added {len(bns_data)} BNS sections from {os.path.basename(bns_file)}")
+        except Exception as e:
+            print(f"Error reading BNS file: {e}")
+
+
     
     # Filter to only new documents
     new_docs = [doc for doc in KNOWLEDGE_BASE if doc['id'] not in existing_ids]

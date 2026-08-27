@@ -1,7 +1,9 @@
 import uuid
+import json
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from langchain_core.messages import HumanMessage, AIMessage
@@ -24,6 +26,7 @@ class ChatResponse(BaseModel):
     confidence: str
     confidence_score: float | None = None
     citations: list[str] | None = None
+    referenced_nodes: list[dict] | None = None
 
 @router.get("/conversations")
 async def get_conversations(
@@ -56,10 +59,19 @@ async def get_conversation_messages(
         select(DBMessage).where(DBMessage.conversation_id == conv_id).order_by(DBMessage.id)
     )
     messages = msg_result.scalars().all()
-    return [
-        {"role": ("user" if m.role == "human" else "ai"), "content": m.content}
-        for m in messages
-    ]
+    msgs_data = []
+    for m in messages:
+        msg_dict = {"role": ("user" if m.role == "human" else "ai"), "content": m.content}
+        if m.role == "ai" and m.metadata_json:
+            try:
+                meta = json.loads(m.metadata_json)
+                msg_dict["intent"] = meta.get("intent")
+                msg_dict["referenced_nodes"] = meta.get("referenced_nodes")
+                msg_dict["timestamp"] = m.created_at.isoformat() if m.created_at else None
+            except:
+                pass
+        msgs_data.append(msg_dict)
+    return msgs_data
 
 @router.delete("/conversations/{conv_id}")
 async def delete_conversation(
@@ -154,29 +166,55 @@ async def chat(
         # Save document if one was drafted
         drafted_doc = final_state.get("drafted_document")
         if drafted_doc:
-            doc_type = "legal_notice"
             intent = final_state.get("user_intent", "")
-            if intent == "RTI": doc_type = "rti"
-            elif intent == "Complaint": doc_type = "consumer_complaint"
-            
+            # Map all 19 intent classes to doc_type labels
+            doc_type_map = {
+                "RTI_Central": "rti",
+                "RTI_State": "rti",
+                "RTI_FirstAppeal": "rti",
+                "Police_FIR": "police_fir",
+                "Consumer_District": "consumer_complaint",
+                "Consumer_RERA": "rera_complaint",
+                "Legal_Notice": "legal_notice",
+                "Employment_Agreement": "legal_notice",
+                "Contract_Review": "legal_notice",
+                "Fill_Document": "legal_notice",
+                "Cheque_Bounce": "legal_notice",
+                "Domestic_Violence": "legal_notice",
+                "Cybercrime": "legal_notice",
+                "Tenant_Landlord": "legal_notice",
+                "Labour_Dispute": "legal_notice",
+            }
+            doc_type = doc_type_map.get(intent, "legal_notice")
+
             lines = [line.strip() for line in drafted_doc.split('\n') if line.strip()]
             title = lines[0][:100] if lines else f"Drafted {doc_type}"
             if title.startswith("#"): title = title.lstrip("#").strip()
-            
+
             saved_doc = SavedDocument(
                 id=str(uuid.uuid4()),
                 user_id=current_user.id,
                 doc_type=doc_type,
                 title=title,
-                content=drafted_doc
+                content=drafted_doc,
+                created_at=datetime.now(timezone.utc)
             )
             db.add(saved_doc)
             
             # Append a notice to the reply
             reply += f"\n\n> [!NOTE]\n> A document has been drafted and saved securely. **[Click here to open your My Documents Dashboard](/dashboard)** to download it as a PDF."
         
-        # Save the AI's reply
-        ai_db_msg = DBMessage(conversation_id=conv_id, role="ai", content=reply)
+        # Save the AI's reply with metadata
+        meta = {
+            "intent": final_state.get("user_intent", "Unknown"),
+            "referenced_nodes": final_state.get("referenced_nodes")
+        }
+        ai_db_msg = DBMessage(
+            conversation_id=conv_id, 
+            role="ai", 
+            content=reply,
+            metadata_json=json.dumps(meta)
+        )
         db.add(ai_db_msg)
         await db.commit()
         
@@ -189,7 +227,8 @@ async def chat(
             intent=final_state.get("user_intent", "Unknown"),
             confidence=confidence_label,
             confidence_score=score,
-            citations=final_state.get("citations")
+            citations=final_state.get("citations"),
+            referenced_nodes=final_state.get("referenced_nodes")
         )
     except Exception as e:
         import traceback

@@ -1,0 +1,101 @@
+[
+  {
+    "section": "Section 85",
+    "title": "Cruelty by husband or relatives",
+    "description": "Subjecting a woman to cruelty by husband or his relatives.",
+    "punishment": "Up to 3 years and fine",
+    "cognizable": true,
+    "bailable": false,
+    "ipc_equivalent": "498A"
+  },
+  {
+    "section": "Section 316",
+    "title": "Cheating",
+    "description": "Cheating and dishonestly inducing delivery of property.",
+    "punishment": "Up to 7 years and fine",
+    "cognizable": true,
+    "bailable": false,
+    "ipc_equivalent": "420"
+  },
+  {
+    "section": "Section 302",
+    "title": "Murder",
+    "description": "Punishment for murder.",
+    "punishment": "Death or imprisonment for life and fine",
+    "cognizable": true,
+    "bailable": false,
+    "ipc_equivalent": "302"
+  },
+  {
+    "section": "Section 103",
+    "title": "Robbery",
+    "description": "Punishment for robbery.",
+    "punishment": "Up to 10 years and fine",
+    "cognizable": true,
+    "bailable": false,
+    "ipc_equivalent": "392"
+  },
+  {
+    "section": "Section 115",
+    "title": "Voluntarily causing hurt",
+    "description": "Causing bodily pain, disease or infirmity to any person.",
+    "punishment": "Up to 1 year or fine or both",
+    "cognizable": false,
+    "bailable": true,
+    "ipc_equivalent": "323"
+  },
+  {
+    "section": "Section 74",
+    "title": "Assault or criminal force to woman",
+    "description": "Assault or use of criminal force to any woman, intending to outrage her modesty.",
+    "punishment": "Up to 5 years and fine",
+    "cognizable": true,
+    "bailable": true,
+    "ipc_equivalent": "354"
+  },
+  {
+    "section": "Section 124",
+    "title": "Kidnapping",
+    "description": "Kidnapping a person from India or from lawful guardianship.",
+    "punishment": "Up to 7 years and fine",
+    "cognizable": true,
+    "bailable": false,
+    "ipc_equivalent": "359"
+  },
+  {
+    "section": "Section 135",
+    "title": "Extortion",
+    "description": "Intentionally putting any person in fear of injury to commit extortion.",
+    "punishment": "Up to 3 years or fine or both",
+    "cognizable": true,
+    "bailable": false,
+    "ipc_equivalent": "383"
+  },
+  {
+    "section": "Section 318",
+    "title": "Fraudulent deeds",
+    "description": "Fraudulent execution of deed of transfer containing false statement.",
+    "punishment": "Up to 2 years or fine or both",
+    "cognizable": false,
+    "bailable": true,
+    "ipc_equivalent": "423"
+  },
+  {
+    "section": "Section 356",
+    "title": "Defamation",
+    "description": "Making or publishing any imputation concerning any person intending to harm reputation.",
+    "punishment": "Up to 2 years or fine or both",
+    "cognizable": false,
+    "bailable": true,
+    "ipc_equivalent": "499"
+  },
+  {
+    "section": "Section 23",
+    "title": "Wrongful confinement",
+    "description": "Wrongfully confining any person.",
+    "punishment": "Up to 1 year or fine or both",
+    "cognizable": true,
+    "bailable": true,
+    "ipc_equivalent": "340"
+  }
+]

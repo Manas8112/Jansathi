@@ -15,9 +15,10 @@ transformers
 torch>=2.0.0
 datasets
 networkx
-pydantic
+pydantic[email]
 pydantic-settings
 pymupdf
+PyPDF2
 jinja2
 weasyprint
 websockets
@@ -28,3 +29,4 @@ sqlalchemy
 aiosqlite
 scikit-learn
 safetensors
+python-docx
