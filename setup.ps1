@@ -55,9 +55,8 @@ cd ..
 # 3. Install Backend dependencies
 Write-Host "`n[3/4] Installing Backend Dependencies..." -ForegroundColor Yellow
 cd backend
-python -m venv .venv
-.\.venv\Scripts\activate
-pip install -r requirements.txt
+py -3.13 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 
 # 4. Configure API Key
 Write-Host "`n[4/4] Configuring Environment..." -ForegroundColor Yellow
@@ -79,4 +78,4 @@ Write-Host "========================================="
 
 # Launch servers
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd frontend; Write-Host 'Starting Frontend Server...' -ForegroundColor Cyan; npm run dev"
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd backend; Write-Host 'Starting Backend Server...' -ForegroundColor Cyan; .\.venv\Scripts\activate; uvicorn main:app --reload"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd backend; Write-Host 'Starting Backend Server...' -ForegroundColor Cyan; .\.venv\Scripts\python.exe -m uvicorn main:app --reload"

@@ -17,27 +17,18 @@ const DOC_TYPE_CONFIG: Record<string, { label: string; color: string }> = {
   consumer_complaint: { label: 'Consumer Complaint', color: 'var(--color-semantic-green)' },
   rera_complaint: { label: 'RERA Complaint', color: 'var(--color-semantic-purple)' },
   legal_advice: { label: 'Legal Advice', color: 'var(--color-semantic-slate)' },
+  police_fir: { label: 'Police FIR / Complaint', color: '#e53e3e' },
 };
+
 
 function getDocConfig(type: string) {
   return DOC_TYPE_CONFIG[type] || { label: type, color: 'var(--color-text-secondary)' };
 }
 
-// Simple relative time formatter
+// Formatter for document dates
 function formatRelativeTime(isoString: string) {
   const date = new Date(isoString);
-  const now = new Date();
-  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-  
-  if (diffInSeconds < 60) return "Just now";
-  const diffInMinutes = Math.floor(diffInSeconds / 60);
-  if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`;
-  const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
-  const diffInDays = Math.floor(diffInHours / 24);
-  if (diffInDays < 30) return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
-  
-  return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 // Strip markdown for preview
@@ -340,6 +331,39 @@ export default function Dashboard() {
               </div>
             );
           })()}
+
+          {/* Delete Account Section */}
+          <div className="mt-16 pt-8 border-t border-[var(--color-border-dim)] flex flex-col items-center">
+            <button
+              onClick={async () => {
+                if (window.confirm("Are you sure? This will permanently delete all your data.")) {
+                  const token = Cookies.get('token');
+                  if (!token) return;
+                  try {
+                    const API_URL = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === "development" ? "http://127.0.0.1:8000" : "https://jansathi-ahwr.onrender.com");
+                    const res = await fetch(`${API_URL}/api/user/me`, {
+                      method: "DELETE",
+                      headers: { Authorization: `Bearer ${token}` }
+                    });
+                    if (res.ok) {
+                      Cookies.remove('token');
+                      router.push('/login');
+                    } else {
+                      toast("Failed to delete account", "error");
+                    }
+                  } catch (e) {
+                    toast("Connection error", "error");
+                  }
+                }
+              }}
+              className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-950/20 dark:text-red-400 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 font-medium text-[13px] rounded-lg transition-colors flex items-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" /> Delete My Account
+            </button>
+            <p className="text-[12px] text-[var(--color-text-muted)] mt-2 text-center max-w-sm">
+              Warning: This action is irreversible. All your documents and chat history will be permanently deleted.
+            </p>
+          </div>
         </div>
       </div>
 

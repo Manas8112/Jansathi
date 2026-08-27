@@ -17,6 +17,68 @@ from auth.models import User, SavedDocument, Conversation, Message as DBMessage
 from auth.database import get_db
 from agents.analyzer import analyze_document_text
 
+def extract_text_from_upload(file_bytes: bytes, filename: str) -> str:
+    ext = os.path.splitext(filename)[1].lower()
+    
+    if ext in ['.txt', '.md']:
+        return file_bytes.decode('utf-8')
+    
+    elif ext == '.docx':
+        import docx
+        doc = docx.Document(io.BytesIO(file_bytes))
+        return "\n".join([paragraph.text for paragraph in doc.paragraphs])
+        
+    elif ext == '.pdf':
+        doc = fitz.open(stream=file_bytes, filetype="pdf")
+        extracted_text = ""
+        num_pages = min(10, len(doc))
+        for i in range(num_pages):
+            page_text = doc[i].get_text()
+            if page_text:
+                extracted_text += page_text + "\n\n"
+                
+        if not extracted_text.strip():
+            print("[Documents] PDF has no text. Using OCR.Space API...")
+            page = doc[0]
+            pix = page.get_pixmap()
+            img_bytes = pix.tobytes("png")
+            base64_image = "data:image/png;base64," + base64.b64encode(img_bytes).decode('utf-8')
+            
+            ocr_res = requests.post(
+                "https://api.ocr.space/parse/image",
+                data={
+                    "base64Image": base64_image,
+                    "apikey": "K84224734688957",  # Public Free Tier Key
+                    "language": "eng"
+                }
+            )
+            if ocr_res.status_code == 200:
+                ocr_data = ocr_res.json()
+                parsed = ocr_data.get("ParsedResults", [])
+                if parsed:
+                    extracted_text = parsed[0].get("ParsedText", "")
+        return extracted_text
+
+    elif ext in ['.jpg', '.jpeg', '.png']:
+        base64_image = "data:image/" + ext[1:] + ";base64," + base64.b64encode(file_bytes).decode('utf-8')
+        ocr_res = requests.post(
+            "https://api.ocr.space/parse/image",
+            data={
+                "base64Image": base64_image,
+                "apikey": "K84224734688957",
+                "language": "eng"
+            }
+        )
+        if ocr_res.status_code == 200:
+            ocr_data = ocr_res.json()
+            parsed = ocr_data.get("ParsedResults", [])
+            if parsed:
+                return parsed[0].get("ParsedText", "")
+        return ""
+    
+    else:
+        raise ValueError(f"Unsupported file type: {ext}")
+
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
 
@@ -140,45 +202,18 @@ async def analyze_document(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Upload a PDF document to analyze for illegal or predatory clauses."""
-    if not file.filename.endswith('.pdf'):
-        raise HTTPException(status_code=400, detail="Only PDF files are supported")
+    """Upload a document to analyze for illegal or predatory clauses."""
     
     try:
         content = await file.read()
-        doc = fitz.open(stream=content, filetype="pdf")
         
-        extracted_text = ""
-        # Read up to the first 10 pages to avoid massive context
-        num_pages = min(10, len(doc))
-        for i in range(num_pages):
-            page_text = doc[i].get_text()
-            if page_text:
-                extracted_text += page_text + "\n\n"
+        try:
+            extracted_text = extract_text_from_upload(content, file.filename)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
                 
         if not extracted_text.strip():
-            print("[Documents] PDF has no text. Using OCR.Space API...")
-            page = doc[0]
-            pix = page.get_pixmap()
-            img_bytes = pix.tobytes("png")
-            base64_image = "data:image/png;base64," + base64.b64encode(img_bytes).decode('utf-8')
-            
-            ocr_res = requests.post(
-                "https://api.ocr.space/parse/image",
-                data={
-                    "base64Image": base64_image,
-                    "apikey": "K84224734688957",  # Public Free Tier Key
-                    "language": "eng"
-                }
-            )
-            if ocr_res.status_code == 200:
-                ocr_data = ocr_res.json()
-                parsed = ocr_data.get("ParsedResults", [])
-                if parsed:
-                    extracted_text = parsed[0].get("ParsedText", "")
-                
-        if not extracted_text.strip():
-            raise HTTPException(status_code=400, detail="Could not extract any text from the PDF")
+            raise HTTPException(status_code=400, detail="Could not extract any text from the document")
             
         # Call the LLM analyzer
         analysis = analyze_document_text(extracted_text)

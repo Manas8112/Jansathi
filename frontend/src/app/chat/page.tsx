@@ -129,6 +129,8 @@ export default function ChatPage() {
     if (!input.trim() || loading) return;
 
     const userMsg = input.trim();
+    let apiMsg = userMsg;
+    
     setInput("");
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
     
@@ -144,7 +146,7 @@ export default function ChatPage() {
           "Authorization": `Bearer ${token}` 
         },
         body: JSON.stringify({ 
-          message: userMsg,
+          message: apiMsg,
           conversation_id: currentConversationId 
         }),
       });
@@ -157,7 +159,7 @@ export default function ChatPage() {
 
       setMessages((prev) => [
         ...prev,
-        { role: "ai", content: data.reply || "Error: No reply generated.", intent: data.intent, timestamp: new Date() },
+        { role: "ai", content: data.reply || "Error: No reply generated.", intent: data.intent, timestamp: new Date(), referenced_nodes: data.referenced_nodes },
       ]);
       
       if (!currentConversationId && data.conversation_id) {

@@ -19,6 +19,7 @@ type AuthContextType = {
   login: (token: string, userData: User) => void;
   logout: () => void;
   checkAuth: () => Promise<void>;
+  deleteAccount: () => Promise<boolean>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -67,6 +68,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const deleteAccount = async () => {
+    const token = Cookies.get("token");
+    if (!token) return false;
+    
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === "development" ? "http://127.0.0.1:8000" : "https://jansathi-ahwr.onrender.com");
+      const res = await fetch(`${API_URL}/api/user/me`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (res.ok) {
+        logout();
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Delete account failed:", error);
+      return false;
+    }
+  };
+
   useEffect(() => {
     checkAuth();
   }, []);
@@ -80,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         checkAuth,
+        deleteAccount,
       }}
     >
       {children}

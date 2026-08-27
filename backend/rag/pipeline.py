@@ -151,10 +151,42 @@ class HybridRAGPipeline:
         except:
             return [query]
 
+    def _validate_expanded_queries(self, original_query: str, expansions: list[str]) -> list[str]:
+        actual_expansions = [q for q in expansions if q != original_query]
+        if not actual_expansions:
+            return [original_query]
+            
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", "Given this original legal query and these expansions, mark each expansion as valid (True) if it is a legitimate Indian legal rephrasing, or invalid (False) if off-topic or hallucinated. Return ONLY JSON: {\"valid\": [true, false, ...]}"),
+            ("user", "Original Query: {original_query}\nExpansions:\n{expansions}")
+        ])
+        
+        chain = prompt | self.llm
+        try:
+            expansions_text = "\n".join([f"{i+1}. {q}" for i, q in enumerate(actual_expansions)])
+            res = chain.invoke({"original_query": original_query, "expansions": expansions_text})
+            
+            import re
+            json_match = re.search(r'\{.*\}', res.content.strip(), re.DOTALL)
+            if not json_match:
+                return expansions
+                
+            data = json.loads(json_match.group())
+            valid_flags = data.get("valid", [])
+            
+            filtered = [original_query]
+            for i, is_valid in enumerate(valid_flags):
+                if i < len(actual_expansions) and is_valid:
+                    filtered.append(actual_expansions[i])
+            return filtered
+        except Exception:
+            return expansions
+
     def retrieve(self, query: str, top_n: int = 5) -> list[dict]:
         """Full Hybrid RAG retrieval pipeline."""
         # 1. Query Expansion
         queries = self._expand_query(query)
+        queries = self._validate_expanded_queries(query, queries)
         
         all_vector_results = []
         all_bm25_results = []
@@ -174,6 +206,10 @@ class HybridRAGPipeline:
         # 4. Cross-Encoder Reranking
         final_results = self._rerank(query, merged_candidates, top_n=top_n)
         
+        print(f"[RAG] Retrieved {len(final_results)} chunks after reranking")
+        if final_results:
+            print(f"[RAG] Top result preview: '{str(final_results[0])[:100]}'")
+            
         return final_results
 
 # Singleton instance

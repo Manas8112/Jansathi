@@ -238,6 +238,52 @@ G.add_node("CRIMINAL_REMEDY", type="remedy",
            steps=["Collect all evidence (messages, receipts, witnesses)", "Visit nearest Police Station", "File FIR under relevant IPC sections", "Get FIR copy (legally mandatory)", "If police refuse: file complaint to SP/DSP or use Section 156(3) CrPC before Magistrate"])
 G.add_edge("POLICE_FIR", "CRIMINAL_REMEDY", relation="procedure")
 
+G.add_node("BNS_2023", type="law", name="Bharatiya Nyaya Sanhita, 2023",
+           description="Replaced Indian Penal Code 1860. Main criminal code.",
+           jurisdiction="central", year=2023)
+G.add_edge("IPC_1860", "BNS_2023", relation="superseded_by")
+G.add_node("BNS_S316", type="section", section="Section 316",
+           name="Cheating (BNS equivalent of IPC 420)",
+           description="Cheating punishable up to 7 years. Cognizable, non-bailable.")
+G.add_edge("BNS_2023", "BNS_S316", relation="contains")
+G.add_node("BNS_S85", type="section", section="Section 85",
+           name="Husband or relative cruelty (BNS equivalent of IPC 498A)",
+           description="Cruelty to wife by husband/relative. Cognizable, non-bailable.")
+G.add_edge("BNS_2023", "BNS_S85", relation="contains")
+G.add_edge("BNS_S316", "POLICE_FIR", relation="remedy_via")
+G.add_edge("BNS_S85", "POLICE_FIR", relation="remedy_via")
+
+G.add_node("IT_ACT_2000", type="law", name="Information Technology Act, 2000",
+           description="Governs cybercrime, data protection, electronic records in India.",
+           jurisdiction="central", year=2000)
+G.add_node("IT_S66C", type="section", section="Section 66C",
+           name="Identity theft",
+           description="Using another's password/digital signature. Up to 3 years, fine up to Rs 1 lakh.")
+G.add_node("IT_S66E", type="section", section="Section 66E",
+           name="Violation of privacy",
+           description="Publishing private images without consent. Up to 3 years, fine up to Rs 2 lakh.")
+G.add_node("CYBER_CRIME_PORTAL", type="forum",
+           name="National Cyber Crime Reporting Portal",
+           url="https://cybercrime.gov.in",
+           description="File cybercrime complaints online at cybercrime.gov.in")
+G.add_edge("IT_ACT_2000", "IT_S66C", relation="contains")
+G.add_edge("IT_ACT_2000", "IT_S66E", relation="contains")
+G.add_edge("IT_S66C", "CYBER_CRIME_PORTAL", relation="remedy_via")
+G.add_edge("IT_S66E", "CYBER_CRIME_PORTAL", relation="remedy_via")
+
+G.add_node("DV_ACT_2005", type="law",
+           name="Protection of Women from Domestic Violence Act, 2005",
+           description="Protects women from domestic abuse. Provides protection orders, residence orders.",
+           jurisdiction="central", year=2005)
+G.add_node("DV_S12", type="section", section="Section 12",
+           name="Application to Magistrate for relief",
+           description="Aggrieved woman can apply to Magistrate for protection/residence/monetary relief.")
+G.add_node("MAGISTRATE_COURT", type="forum", name="Judicial Magistrate Court",
+           description="First class Magistrate handles DV Act applications and interim orders.")
+G.add_edge("DV_ACT_2005", "DV_S12", relation="contains")
+G.add_edge("DV_S12", "MAGISTRATE_COURT", relation="remedy_via")
+G.add_edge("DV_S12", "POLICE_FIR", relation="can_also_use")
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # QUERY FUNCTIONS
@@ -251,7 +297,8 @@ def get_legal_facts(intent: str, claim_amount_lakhs: float = 0) -> dict:
     """
     facts = {}
 
-    if intent in ["RTI", "rti"]:
+    # ── RTI (all sub-classes) ───────────────────────────────────────────────
+    if intent in ["RTI", "rti", "RTI_Central", "RTI_State", "RTI_FirstAppeal"]:
         facts = {
             "applicable_law": "Right to Information Act, 2005",
             "key_sections": ["Section 6(1) — How to file", "Section 7 — 30-day response deadline", "Section 19(1) — First Appeal", "Section 19(3) — Second Appeal to Information Commission"],
@@ -261,10 +308,12 @@ def get_legal_facts(intent: str, claim_amount_lakhs: float = 0) -> dict:
             "second_appeal_body": "Central Information Commission (CIC) or State Information Commission (SIC)",
             "penalty_on_pio": "₹250/day (max ₹25,000) under Section 20",
             "portal": "https://rtionline.gov.in (for Central Govt)",
-            "helpline": "NALSA: 15100 for free legal aid"
         }
+        if intent == "RTI_FirstAppeal":
+            facts["note"] = "This is a First Appeal under Section 19(1). File within 30 days of PIO's failure to respond."
 
-    elif intent in ["Complaint", "consumer", "Consumer"]:
+    # ── Consumer (District / RERA) ─────────────────────────────────────────
+    elif intent in ["Complaint", "consumer", "Consumer", "Consumer_District"]:
         if claim_amount_lakhs <= 50:
             forum_node = G.nodes["DISTRICT_CONSUMER_COMMISSION"]
             facts["forum"] = forum_node["name"]
@@ -291,7 +340,7 @@ def get_legal_facts(intent: str, claim_amount_lakhs: float = 0) -> dict:
         facts["helpline"] = "National Consumer Helpline: 1800-11-4000 or 1915 (toll-free)"
         facts["app"] = "NCH App on Play Store"
 
-    elif intent in ["RERA", "rera"]:
+    elif intent in ["RERA", "rera", "Consumer_RERA"]:
         facts = {
             "applicable_law": "Real Estate (Regulation and Development) Act, 2016",
             "key_sections": ["Section 18 — Refund/Interest for delayed possession", "Section 31 — Filing complaint before RERA Authority"],
@@ -301,9 +350,67 @@ def get_legal_facts(intent: str, claim_amount_lakhs: float = 0) -> dict:
             "filing_fee": "Varies by state (typically ₹1,000-₹5,000)"
         }
 
-    elif intent in ["Legal Advice"] and "420" in str(intent):
-        # Will be caught by section-specific lookup below
-        pass
+    # ── Police FIR ─────────────────────────────────────────────────────────
+    elif intent in ["Police_FIR", "Complaint"]:
+        facts = {
+            "applicable_law": "Bharatiya Nagarik Suraksha Sanhita (BNSS), 2023 / CrPC 1973",
+            "key_sections": ["Section 173 BNSS — FIR registration (cognizable offence)", "Section 175 BNSS — Police must register FIR"],
+            "process": "Go to nearest police station and give written complaint. If police refuse, complain to SP/DSP or file before Magistrate u/s 156(3)",
+            "zero_fir": "You can file FIR at ANY police station regardless of jurisdiction (Zero FIR).",
+            "helpline": "Dial 112 (Police Emergency) or 100"
+        }
+
+    # ── Domestic Violence ──────────────────────────────────────────────────
+    elif intent == "Domestic_Violence":
+        facts = {
+            "applicable_law": "Protection of Women from Domestic Violence Act, 2005 + IPC Section 498A",
+            "key_sections": ["Section 12 PWDVA — Application to Magistrate for protection order", "Section 498A IPC — Husband/relative cruelty (cognizable, non-bailable)"],
+            "reliefs_available": ["Protection Order (Section 18)", "Residence Order (Section 19)", "Monetary Relief (Section 20)", "Custody Order (Section 21)"],
+            "forum": "Judicial Magistrate First Class (JMFC) in your area",
+            "helpline": "NCW Helpline: 7827170170 | National Domestic Violence Hotline: 181",
+            "shelter": "Protection Officer in your district can provide shelter homes (Section 6)"
+        }
+
+    # ── Cheque Bounce ──────────────────────────────────────────────────────
+    elif intent == "Cheque_Bounce":
+        facts = {
+            "applicable_law": "Negotiable Instruments Act, 1881 — Section 138",
+            "key_sections": ["Section 138 NI Act — Dishonour of cheque (criminal liability)", "Section 141 — Company/director liability"],
+            "process": "1. Receive bank memo 2. Send legal notice within 30 days of memo 3. If no payment in 15 days, file complaint in Magistrate court within 30 days",
+            "punishment": "Imprisonment up to 2 years OR fine up to twice the cheque amount, or both",
+            "limitation": "Legal notice must be sent within 30 days of cheque bounce memo",
+            "forum": "Judicial Magistrate court having jurisdiction where cheque was presented"
+        }
+
+    # ── Labour Dispute ─────────────────────────────────────────────────────
+    elif intent == "Labour_Dispute":
+        facts = {
+            "applicable_law": "Industrial Disputes Act, 1947 + Payment of Wages Act, 1936 + EPF Act, 1952",
+            "key_sections": ["Section 33C Payment of Wages Act — Recovery of dues", "Section 2A IDA — Individual workman dispute"],
+            "forum": "Labour Commissioner Office → Labour Court → Industrial Tribunal",
+            "unpaid_salary": "File complaint with Labour Commissioner. Employer must pay within 30 days of order.",
+            "pf_complaint": "File online at epfigms.gov.in or call EPFO helpline: 1800-118-005",
+            "helpline": "Labour Helpline: 14567"
+        }
+
+    # ── Cybercrime ─────────────────────────────────────────────────────────
+    elif intent == "Cybercrime":
+        facts = {
+            "applicable_law": "Information Technology Act, 2000 + BNS 2023",
+            "key_sections": ["Section 66 IT Act — Computer related offences", "Section 66C — Identity theft", "Section 66D — Cheating by impersonation", "Section 67 — Publishing obscene material"],
+            "portal": "https://cybercrime.gov.in (National Cyber Crime Reporting Portal)",
+            "helpline": "Cyber Crime Helpline: 1930",
+            "process": "Report online at cybercrime.gov.in or visit nearest Cyber Crime Police Station"
+        }
+
+    # ── Tenant / Landlord ──────────────────────────────────────────────────
+    elif intent in ["Tenant_Landlord", "Contract_Review"]:
+        facts = {
+            "applicable_law": "Transfer of Property Act, 1882 + State-specific Rent Control Acts",
+            "key_rights": ["Landlord cannot evict without 15-30 days written notice (state-specific)", "Security deposit must be returned within 30 days of vacating", "Rent increase must follow state Rent Control Act limits"],
+            "forum": "Rent Controller / Civil Court",
+            "key_sections": ["Section 106 TPA — Notice to quit", "Section 111 TPA — Determination of lease"]
+        }
 
     return facts
 
@@ -378,7 +485,7 @@ def get_escalation_path(starting_node: str) -> list[dict]:
     return path
 
 
-def get_context_for_intent(intent: str, message: str = "", claim_amount_lakhs: float = 0) -> str:
+def get_context_for_intent(intent: str, message: str = "", claim_amount_lakhs: float = 0) -> tuple[str, list[dict]]:
     """
     Main function called by the LangGraph pipeline.
     Returns a formatted string of legal facts to inject into the LLM prompt.
@@ -430,7 +537,26 @@ def get_context_for_intent(intent: str, message: str = "", claim_amount_lakhs: f
     
     output_parts.append("\n=== END VERIFIED FACTS ===")
     
-    return "\n".join(output_parts)
+    referenced_nodes = []
+
+    # Add intent-specific nodes FIRST (law, section, forum, remedy)
+    if section_facts:
+        referenced_nodes.append({"name": section_facts.get("name", ""), "type": section_facts.get("type", "section"), "description": section_facts.get("description", "")})
+        for r in section_facts.get("remedies", []):
+            referenced_nodes.append({"name": r.get("name", ""), "type": "remedy", "description": r.get("description", "")})
+
+    if legal_facts:
+        if "applicable_law" in legal_facts:
+            referenced_nodes.append({"name": legal_facts["applicable_law"], "type": "law", "description": ""})
+        if "forum" in legal_facts:
+            referenced_nodes.append({"name": legal_facts["forum"], "type": "forum", "description": ""})
+
+    # Always add NALSA LAST as a supplementary resource
+    nalsa = G.nodes["NALSA"]
+    referenced_nodes.append({"name": nalsa.get("name", "NALSA"), "type": nalsa.get("type", "resource"), "description": nalsa.get("description", "")})
+
+    return "\n".join(output_parts), referenced_nodes
+
 
 
 # Singleton
