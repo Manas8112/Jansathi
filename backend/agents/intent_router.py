@@ -44,6 +44,12 @@ local_model = None
 local_tokenizer = None
 label_mapping: dict[int, str] = {}
 
+# Always load the label mapping (used by both local model and Hugging Face API)
+if os.path.exists(MAPPING_FILE):
+    with open(MAPPING_FILE, "r", encoding="utf-8") as f:
+        raw = json.load(f)
+        label_mapping = {int(k): v for k, v in raw.items()}
+
 if _use_local_model:
     try:
         import torch  # noqa: imported conditionally to avoid OOM on Render
@@ -53,11 +59,6 @@ if _use_local_model:
         local_tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
         local_model = AutoModelForSequenceClassification.from_pretrained(MODEL_DIR)
         local_model.eval()
-
-        if os.path.exists(MAPPING_FILE):
-            with open(MAPPING_FILE, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-                label_mapping = {int(k): v for k, v in raw.items()}
         print(f"[IntentRouter] Local model loaded. Classes: {list(label_mapping.values())}")
     except Exception as exc:
         print(f"[IntentRouter] Failed to load local model: {exc}. Falling back to Groq.")
@@ -297,7 +298,41 @@ def intent_router_node(state: AgentState) -> dict:
             print(f"[IntentRouter] Local inference error: {exc} → Groq fallback.")
             intent = None
 
-    # ── Groq LLM fallback ───────────────────────────────────────────────────
+    # ── Hugging Face API fallback ──────────────────────────────────────────
+    if intent is None:
+        hf_model_id = os.getenv("HF_MODEL_ID")
+        hf_token = os.getenv("HF_API_TOKEN")
+        if hf_model_id and hf_token:
+            import requests
+            url = f"https://api-inference.huggingface.co/models/{hf_model_id}"
+            headers = {"Authorization": f"Bearer {hf_token}"}
+            try:
+                print(f"[IntentRouter] Attempting Hugging Face API fallback ({hf_model_id})...")
+                response = requests.post(url, headers=headers, json={"inputs": latest_message}, timeout=10)
+                if response.status_code == 200:
+                    result = response.json()
+                    # HF usually returns [[{'label': 'LABEL_X', 'score': 0.9}, ...]]
+                    if isinstance(result, list) and len(result) > 0 and isinstance(result[0], list):
+                        top_pred = result[0][0]
+                        score = top_pred.get("score", 0.0)
+                        if score > 0.40:
+                            label_str = top_pred.get("label", "")
+                            if label_str.startswith("LABEL_"):
+                                label_id = int(label_str.replace("LABEL_", ""))
+                                intent = label_mapping.get(label_id)
+                            else:
+                                intent = label_str
+                            print(f"[IntentRouter] Hugging Face API → {intent} (score={score:.2f})")
+                        else:
+                            print(f"[IntentRouter] Hugging Face API uncertain ({score:.2f})")
+                elif response.status_code == 503:
+                    print(f"[IntentRouter] Hugging Face model is loading (503). Retrying might be needed later.")
+                else:
+                    print(f"[IntentRouter] Hugging Face API error: {response.status_code} {response.text}")
+            except Exception as e:
+                print(f"[IntentRouter] Hugging Face API request failed: {e}")
+
+    # ── Groq LLM fail-safe (if HF fails or is not configured) ─────────────
     if intent is None:
         history_str = ""
         if len(messages) > 1:
@@ -308,7 +343,7 @@ def intent_router_node(state: AgentState) -> dict:
 
         raw = _fallback_chain.invoke({"message": latest_message, "history": history_str})
         intent = strip_think(raw.content.strip())
-        print(f"[IntentRouter] Groq fallback → {intent}")
+        print(f"[IntentRouter] Groq fail-safe fallback → {intent}")
 
     # ── Normalise to a valid intent ──────────────────────────────────────────
     intent_clean = "Chitchat"

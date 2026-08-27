@@ -20,6 +20,28 @@ async def lifespan(app: FastAPI):
     # Pre-load ML models (Embedding and Cross-Encoder) into memory
     from rag.pipeline import get_rag_pipeline
     get_rag_pipeline()
+
+    import os
+    import threading
+    hf_model_id = os.getenv("HF_MODEL_ID")
+    hf_token = os.getenv("HF_API_TOKEN")
+    
+    if hf_model_id and hf_token:
+        print(f"[DEBUG] Hugging Face intent model configured. Sending warm-up request to {hf_model_id}...")
+        def warmup_hf():
+            import requests
+            try:
+                url = f"https://api-inference.huggingface.co/models/{hf_model_id}"
+                headers = {"Authorization": f"Bearer {hf_token}"}
+                # Pinging with a dummy payload just to trigger the model to load into HF's memory
+                requests.post(url, headers=headers, json={"inputs": "wake up"}, timeout=5)
+                print("[DEBUG] Hugging Face model warm-up request completed.")
+            except Exception as e:
+                print(f"[DEBUG] Hugging Face warm-up ping failed: {e}")
+        
+        # Run in a background thread so it doesn't block FastAPI startup
+        threading.Thread(target=warmup_hf, daemon=True).start()
+
     print("[DEBUG] ML Models loaded successfully! Yielding to Uvicorn...")
     
     yield
