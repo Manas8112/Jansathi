@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowRight, Scale, Shield, FileText } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { ArchitectureShowcase } from "@/components/ArchitectureShowcase";
 
 export default function Home() {
   return (
@@ -120,37 +121,7 @@ export default function Home() {
       </section>
 
       {/* FEATURES SECTION */}
-      <section id="features" className="py-32">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-            
-            <div className="relative pl-6 border-l-2 border-[var(--color-border-accent)]">
-              <div className="font-mono text-[11px] text-[var(--color-accent)] mb-3">01 / KNOW YOUR RIGHTS</div>
-              <h3 className="font-heading font-medium text-[18px] text-[var(--color-text-primary)] tracking-tight mb-2">Intent Recognition</h3>
-              <p className="text-[var(--color-text-secondary)] text-[15px] leading-relaxed">
-                Describe your problem in your own words. Our AI instantly identifies whether you need an RTI, a legal notice, or a consumer forum complaint.
-              </p>
-            </div>
-            
-            <div className="relative pl-6 border-l-2 border-[var(--color-border-accent)]">
-              <div className="font-mono text-[11px] text-[var(--color-accent)] mb-3">02 / HYBRID RAG</div>
-              <h3 className="font-heading font-medium text-[18px] text-[var(--color-text-primary)] tracking-tight mb-2">Legal Precedents</h3>
-              <p className="text-[var(--color-text-secondary)] text-[15px] leading-relaxed">
-                The AI grounds its responses in Indian Bare Acts and Supreme Court rulings. It retrieves exact sections using vector search so you get accurate advice.
-              </p>
-            </div>
-            
-            <div className="relative pl-6 border-l-2 border-[var(--color-border-accent)]">
-              <div className="font-mono text-[11px] text-[var(--color-accent)] mb-3">03 / DOCUMENT GENERATION</div>
-              <h3 className="font-heading font-medium text-[18px] text-[var(--color-text-primary)] tracking-tight mb-2">Ready to File</h3>
-              <p className="text-[var(--color-text-secondary)] text-[15px] leading-relaxed">
-                Automatically draft perfectly formatted documents. Save them to your dashboard and download them as print-ready PDFs in one click.
-              </p>
-            </div>
-
-          </div>
-        </div>
-      </section>
+      <ArchitectureShowcase />
 
       {/* FOOTER */}
       <footer className="w-full border-t border-[var(--color-border-dim)] py-8 bg-[var(--color-bg-base)]">

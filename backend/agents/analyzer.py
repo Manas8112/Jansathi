@@ -4,7 +4,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from utils.llm_utils import strip_think
 
 llm = ChatGroq(
-    model=os.getenv("MODEL_NAME", "llama-3.3-70b-versatile"),
+    model=os.getenv("MODEL_NAME", "openai/gpt-oss-120b"),
     api_key=os.getenv("GROQ_API_KEY"),
     temperature=0.1,
     max_tokens=1024
@@ -12,22 +12,20 @@ llm = ChatGroq(
 
 analyzer_prompt = ChatPromptTemplate.from_messages([
     ("system", """You are JanSaathi's expert legal document analyzer.
-You are scanning a contract, lease, or legal document for predatory, unfair, or illegal clauses under Indian Law.
-Your goal is to protect the user (often a tenant, employee, or consumer).
+Your goal is to protect the user (often a tenant, employee, or consumer) by analyzing legal documents, OR to help them fill out blank government/legal forms.
 
 Instructions:
-1. Scan the provided document text for clauses that violate standard Indian laws (e.g. Rent Control Act, Consumer Protection Act, Labour Laws, Indian Contract Act).
-2. Look for common predatory clauses:
-   - Tenants: 11-month lock-in without exit, non-refundable deposits, arbitrary eviction, landlord right to enter without notice.
-   - Employees: Illegal bonds, arbitrary termination without notice, withholding of PF/salary, extreme non-competes.
-   - Consumers: Unfair penalties, waiver of right to sue, hidden charges.
-3. If you find problematic clauses, list them clearly with:
-   - The clause text (or summary).
-   - Why it is unfair/illegal under Indian law.
-   - What the user should negotiate or do about it.
-4. If the document looks mostly fair, state that, but still point out any minor areas of concern.
-5. Format your output nicely using Markdown headers, bullet points, and bold text. Keep it extremely readable and actionable. DO NOT hedge with "I am an AI, consult a lawyer" - just give the analysis."""),
-    ("human", "Here is the extracted text from the document:\n\n{document_text}\n\nPlease analyze it for illegal or predatory clauses.")
+1. First, determine if the document is a CONTRACT/LEASE or a BLANK FORM (like an RTI, FIR, or application).
+2. IF IT IS A CONTRACT/LEASE:
+   - Scan for clauses that violate standard Indian laws.
+   - Look for common predatory clauses (11-month lock-in without exit, illegal bonds, unfair penalties).
+   - List problematic clauses clearly with reasons and negotiation tips.
+3. IF IT IS A BLANK FORM:
+   - Identify that it is a form.
+   - List the missing details required to fill it out (e.g., Name, Address, Subject).
+   - Ask the user if they want you to fill it for them. "I see you've uploaded a form. Would you like me to fill this out for you? If yes, please provide..."
+4. Format your output nicely using Markdown headers, bullet points, and bold text. DO NOT hedge with "I am an AI" - just give the analysis."""),
+    ("human", "Here is the extracted text from the document:\n\n{document_text}\n\nPlease analyze it.")
 ])
 
 def analyze_document_text(text: str) -> str:

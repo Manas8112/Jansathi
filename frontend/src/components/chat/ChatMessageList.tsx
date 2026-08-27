@@ -41,6 +41,7 @@ export interface Message {
   content: string;
   intent?: string;
   timestamp?: Date;
+  referenced_nodes?: { name: string, type: string, description: string }[];
 }
 
 interface ChatMessageListProps {
@@ -101,7 +102,7 @@ export function ChatMessageList({
                 {msg.role === "user" ? (
                   <div className="flex items-end gap-2 max-w-[70%]">
                     <span className="text-[10px] text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 transition-opacity mb-1 shrink-0">
-                      {msg.timestamp ? msg.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}
+                      {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}
                     </span>
                     <div className="bg-[var(--color-accent)] text-[#080808] px-3.5 py-2.5 rounded-t-xl rounded-bl-xl rounded-br-[2px] text-[13px] font-sans font-normal leading-relaxed whitespace-pre-wrap shadow-sm">
                       {msg.content}
@@ -118,7 +119,7 @@ export function ChatMessageList({
                           </span>
                         )}
                         <span className="text-[10px] text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 transition-opacity">
-                          {msg.timestamp ? msg.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}
+                          {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}
                         </span>
                       </div>
                       
@@ -147,6 +148,22 @@ export function ChatMessageList({
                       
                       {/* Action Buttons for AI Message */}
                       <AIMessageActions content={msg.content} />
+                      
+                      {msg.referenced_nodes && msg.referenced_nodes.length > 0 && (
+                        <details className="mt-4 border border-[var(--color-border-dim)] rounded-md bg-[var(--color-bg-subtle)]" data-html2canvas-ignore="true">
+                          <summary className="cursor-pointer text-[12px] text-[var(--color-text-muted)] p-2 font-medium hover:text-[var(--color-text-primary)] transition-colors">
+                            📚 Knowledge Sources ({msg.referenced_nodes.length})
+                          </summary>
+                          <ul className="px-4 pb-3 pt-1 text-[11px] text-[var(--color-text-secondary)] space-y-2">
+                            {msg.referenced_nodes.map((node, idx) => (
+                              <li key={idx} className="border-l-2 border-[var(--color-accent)] pl-2">
+                                <span className="font-semibold block text-[var(--color-text-primary)]">{node.name}</span>
+                                {node.description && <span className="block mt-0.5 opacity-80">{node.description}</span>}
+                              </li>
+                            ))}
+                          </ul>
+                        </details>
+                      )}
 
                     </div>
                   </div>

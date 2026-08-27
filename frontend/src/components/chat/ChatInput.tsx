@@ -30,7 +30,7 @@ export function ChatInput({
             type="file" 
             className="hidden" 
             onChange={handleFileUpload} 
-            accept=".pdf,.txt,.docx"
+            accept="application/pdf,image/jpeg,image/png,image/jpg,.md,.txt,.docx"
             disabled={loading}
           />
         </label>

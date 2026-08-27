@@ -21,7 +21,7 @@ from utils.llm_utils import strip_think
 
 # Use fast model for verification — it only needs to check, not generate
 verifier_llm = ChatGroq(
-    model=os.getenv("MODEL_CHEAP", "qwen/qwen3-1.7b"),
+    model=os.getenv("MODEL_CHEAP", "openai/gpt-oss-20b"),
     temperature=0.0
 )
 
@@ -43,6 +43,8 @@ Criteria:
 4. Does it mention a deadline or timeframe?
 5. Does it AVOID saying "I cannot provide advice" or "consult a lawyer" as the MAIN answer?
 6. Is the response actually answering the user's question (not deflecting)?
+7. Does the response cite only REAL Indian law sections? Valid examples include: Section 6 RTI Act, Section 35 CPA, Section 498A IPC, Section 420 IPC, Section 17 RERA, Section 19 RTI Act. Flag as issue if response cites something like 'Section 1200' or any section not commonly known.
+8. Does the response avoid contradicting the user's established facts from earlier in the conversation (e.g. do NOT recommend a different court than what was already determined)?
 
 Score 0-10 (10 = perfect, 7+ = acceptable, <7 = needs improvement)
 
@@ -64,6 +66,7 @@ Rewrite your response addressing ALL these issues. Your new response MUST:
 3. Name the specific forum/authority where the user should file
 4. Include at least one concrete deadline or timeframe
 5. Be empowering and actionable — NOT hedging
+6. Do NOT cite any law section that is not a well-known, real Indian law section.
 
 Legal Context (use this to ground your answer):
 {context}
@@ -75,7 +78,7 @@ Write the improved response now:"""),
 ])
 
 correction_llm = ChatGroq(
-    model=os.getenv("MODEL_NAME", "qwen/qwen3-27b"),
+    model=os.getenv("MODEL_NAME", "openai/gpt-oss-120b"),
     temperature=0.2,
     max_tokens=1024
 )
@@ -99,6 +102,11 @@ def verifier_node(state: AgentState) -> dict:
     # (Documents shouldn't be forced into the Action Roadmap format)
     if state.get("drafted_document"):
         print("[Verifier] Skipping verification because a document was drafted.")
+        return {}
+        
+    # Skip verification if the user is in an interactive document-filling flow
+    if state.get("user_intent") == "Fill_Document":
+        print("[Verifier] Skipping verification because intent is Fill_Document.")
         return {}
 
     # Find last AI message
@@ -141,10 +149,11 @@ def verifier_node(state: AgentState) -> dict:
         passes = evaluation.get("passes", True)
         issues = evaluation.get("issues", [])
 
-        print(f"[Verifier] Score: {score}/10, Passes: {passes}, Issues: {issues}")
+        print(f"[Verifier] Score: {score}/10 | Passes: {passes} | Issues: {issues}")
 
         # Only re-draft if score is below threshold and there are real issues
-        if not passes and score < 7 and issues:
+        if not passes and score < 7.5 and issues:
+            print(f"[Verifier] Score {score} < 7.5 — triggering correction loop.")
             context = "\n\n".join(state.get("retrieved_context", []))
 
             correction_chain = correction_prompt | correction_llm
@@ -161,6 +170,8 @@ def verifier_node(state: AgentState) -> dict:
             return {
                 "messages": non_ai_messages + [AIMessage(content=corrected_response)]
             }
+        else:
+            print(f"[Verifier] Score {score} >= 7.5 — response accepted, no correction needed.")
 
     except Exception as e:
         print(f"[Verifier] Error during verification: {e}")

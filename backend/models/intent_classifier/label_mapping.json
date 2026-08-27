@@ -1,8 +1,21 @@
 {
-    "0": "Complaint",
-    "1": "Draft Document",
-    "2": "General",
-    "3": "Legal Advice",
-    "4": "RTI",
-    "5": "Scheme Info"
+  "0": "Cheque_Bounce",
+  "1": "Chitchat",
+  "2": "Civic_Info",
+  "3": "Consumer_District",
+  "4": "Consumer_RERA",
+  "5": "Contract_Review",
+  "6": "Cybercrime",
+  "7": "Domestic_Violence",
+  "8": "Employment_Agreement",
+  "9": "Fill_Document",
+  "10": "General_Legal_Advice",
+  "11": "Labour_Dispute",
+  "12": "Legal_Notice",
+  "13": "Police_FIR",
+  "14": "RTI_Central",
+  "15": "RTI_FirstAppeal",
+  "16": "RTI_State",
+  "17": "Scheme_Info",
+  "18": "Tenant_Landlord"
 }

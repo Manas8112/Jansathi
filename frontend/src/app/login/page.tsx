@@ -27,7 +27,8 @@ export default function LoginPage() {
         ? JSON.stringify({ email, password })
         : JSON.stringify({ email, name, password });
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${endpoint}`, {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === "development" ? "http://localhost:8000" : "https://jansathi-ahwr.onrender.com");
+      const res = await fetch(`${API_URL}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body,
@@ -158,6 +159,13 @@ export default function LoginPage() {
             )}
           </button>
         </form>
+
+        {/* Render Free Tier Notice for Judges */}
+        <div className="mt-8 pt-6 border-t border-[var(--color-border-dim)] text-center">
+          <p className="text-[12px] text-[var(--color-text-muted)] leading-relaxed">
+            <strong>Notice for Hackathon Judges:</strong> This app's backend is hosted on Render's free tier. If the app has been inactive, the first login request may take up to <strong>50 seconds</strong> to process as the server spins back up. Thank you for your patience!
+          </p>
+        </div>
 
       </div>
     </div>

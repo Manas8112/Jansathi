@@ -12,17 +12,18 @@ from auth.models import User
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    print("[DEBUG] Lifespan started. Initializing DB...")
     # Startup: create db tables
     await init_db()
     
+    print("[DEBUG] DB initialized. Loading ML models...")
     # Pre-load ML models (Embedding and Cross-Encoder) into memory
-    print("Initializing Machine Learning Models (this may take a moment)...")
     from rag.pipeline import get_rag_pipeline
     get_rag_pipeline()
-    print("ML Models loaded successfully!")
+    print("[DEBUG] ML Models loaded successfully! Yielding to Uvicorn...")
     
     yield
-    # Shutdown
+    print("[DEBUG] Shutdown initiated")
 
 app = FastAPI(
     title="JanSaathi API",
@@ -34,7 +35,7 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -49,6 +50,9 @@ app.include_router(chat_router)
 
 from api.documents import router as documents_router
 app.include_router(documents_router)
+
+from api.user_router import router as user_router
+app.include_router(user_router)
 
 @app.get("/api/health")
 async def health_check():
