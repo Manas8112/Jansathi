@@ -306,32 +306,26 @@ def intent_router_node(state: AgentState) -> dict:
         
         hf_token = os.getenv("HF_API_TOKEN")
         if hf_model_id and hf_token:
-            import requests
-            url = f"https://api-inference.huggingface.co/models/{hf_model_id}"
-            headers = {"Authorization": f"Bearer {hf_token}"}
+            from huggingface_hub import InferenceClient
             try:
                 print(f"[IntentRouter] Attempting Hugging Face API fallback ({hf_model_id})...")
-                response = requests.post(url, headers=headers, json={"inputs": latest_message}, timeout=10)
-                if response.status_code == 200:
-                    result = response.json()
-                    # HF usually returns [[{'label': 'LABEL_X', 'score': 0.9}, ...]]
-                    if isinstance(result, list) and len(result) > 0 and isinstance(result[0], list):
-                        top_pred = result[0][0]
-                        score = top_pred.get("score", 0.0)
-                        if score > 0.40:
-                            label_str = top_pred.get("label", "")
-                            if label_str.startswith("LABEL_"):
-                                label_id = int(label_str.replace("LABEL_", ""))
-                                intent = label_mapping.get(label_id)
-                            else:
-                                intent = label_str
-                            print(f"[IntentRouter] Hugging Face API → {intent} (score={score:.2f})")
+                client = InferenceClient(token=hf_token)
+                # Call text classification API
+                result = client.text_classification(latest_message, model=hf_model_id)
+                # Result is a list of dicts: [{'label': 'LABEL_X', 'score': 0.9}]
+                if isinstance(result, list) and len(result) > 0:
+                    top_pred = result[0]
+                    score = top_pred.get("score", 0.0)
+                    if score > 0.40:
+                        label_str = top_pred.get("label", "")
+                        if label_str.startswith("LABEL_"):
+                            label_id = int(label_str.replace("LABEL_", ""))
+                            intent = label_mapping.get(label_id)
                         else:
-                            print(f"[IntentRouter] Hugging Face API uncertain ({score:.2f})")
-                elif response.status_code == 503:
-                    print(f"[IntentRouter] Hugging Face model is loading (503). Retrying might be needed later.")
-                else:
-                    print(f"[IntentRouter] Hugging Face API error: {response.status_code} {response.text}")
+                            intent = label_str
+                        print(f"[IntentRouter] Hugging Face API → {intent} (score={score:.2f})")
+                    else:
+                        print(f"[IntentRouter] Hugging Face API uncertain ({score:.2f})")
             except Exception as e:
                 print(f"[IntentRouter] Hugging Face API request failed: {e}")
 

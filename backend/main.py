@@ -32,15 +32,14 @@ async def lifespan(app: FastAPI):
     if hf_model_id and hf_token:
         print(f"[DEBUG] Hugging Face intent model configured. Sending warm-up request to {hf_model_id}...")
         def warmup_hf():
-            import requests
+            from huggingface_hub import InferenceClient
             import time
             try:
                 # Give Render's container network interface 10 seconds to fully establish DNS resolvers
                 time.sleep(10)
-                url = f"https://api-inference.huggingface.co/models/{hf_model_id}"
-                headers = {"Authorization": f"Bearer {hf_token}"}
+                client = InferenceClient(token=hf_token)
                 # Pinging with a dummy payload just to trigger the model to load into HF's memory
-                requests.post(url, headers=headers, json={"inputs": "wake up"}, timeout=5)
+                client.text_classification("wake up", model=hf_model_id)
                 print("[DEBUG] Hugging Face model warm-up request completed.")
             except Exception as e:
                 print(f"[DEBUG] Hugging Face warm-up ping failed: {e}")
