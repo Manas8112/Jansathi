@@ -301,6 +301,9 @@ def intent_router_node(state: AgentState) -> dict:
     # ── Hugging Face API fallback ──────────────────────────────────────────
     if intent is None:
         hf_model_id = os.getenv("HF_MODEL_ID")
+        if hf_model_id:
+            hf_model_id = hf_model_id.replace("https://huggingface.co/", "").strip("/")
+        
         hf_token = os.getenv("HF_API_TOKEN")
         if hf_model_id and hf_token:
             import requests
