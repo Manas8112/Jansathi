@@ -33,7 +33,10 @@ async def lifespan(app: FastAPI):
         print(f"[DEBUG] Hugging Face intent model configured. Sending warm-up request to {hf_model_id}...")
         def warmup_hf():
             import requests
+            import time
             try:
+                # Give Render's container network interface 10 seconds to fully establish DNS resolvers
+                time.sleep(10)
                 url = f"https://api-inference.huggingface.co/models/{hf_model_id}"
                 headers = {"Authorization": f"Bearer {hf_token}"}
                 # Pinging with a dummy payload just to trigger the model to load into HF's memory
