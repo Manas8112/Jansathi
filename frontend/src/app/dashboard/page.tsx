@@ -10,6 +10,7 @@ import { DocumentModal, DocumentInfo } from "@/components/DocumentModal";
 import { marked } from 'marked';
 import { Download, Trash2, ArrowLeft, Search } from 'lucide-react';
 import { useToast } from "@/hooks/useToast";
+import { motion } from 'framer-motion';
 
 const DOC_TYPE_CONFIG: Record<string, { label: string; color: string }> = {
   rti: { label: 'RTI Application', color: 'var(--color-accent)' },
@@ -188,13 +189,18 @@ export default function Dashboard() {
           </div>
 
           {!loading && documents.length > 0 && (
-            <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-2 scrollbar-none" style={{ scrollbarWidth: 'none' }}>
+            <motion.div
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-2 mb-8 overflow-x-auto pb-2 scrollbar-none"
+              style={{ scrollbarWidth: 'none' }}
+            >
               <button
                 onClick={() => setActiveFilter('all')}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-colors ${
+                className={`shrink-0 px-4 py-1.5 rounded-full text-[13px] font-medium transition-all shadow-sm ${
                   activeFilter === 'all' 
-                    ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)]' 
-                    : 'bg-[var(--color-bg-surface)] border border-[var(--color-border-dim)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)]'
+                    ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)] shadow-[0_0_15px_rgba(0,0,0,0.1)]' 
+                    : 'bg-[var(--color-glass)] backdrop-blur-md border border-[var(--color-glass-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)]'
                 }`}
               >
                 All Documents
@@ -203,28 +209,28 @@ export default function Dashboard() {
                 <button
                   key={key}
                   onClick={() => setActiveFilter(key)}
-                  className={`shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-colors ${
+                  className={`shrink-0 px-4 py-1.5 rounded-full text-[13px] font-medium transition-all shadow-sm ${
                     activeFilter === key 
-                      ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)]' 
-                      : 'bg-[var(--color-bg-surface)] border border-[var(--color-border-dim)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)]'
+                      ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)] shadow-[0_0_15px_rgba(0,0,0,0.1)]' 
+                      : 'bg-[var(--color-glass)] backdrop-blur-md border border-[var(--color-glass-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)]'
                   }`}
                 >
                   {config.label}
                 </button>
               ))}
-            </div>
+            </motion.div>
           )}
 
           {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="bg-[var(--color-bg-surface)] border border-[var(--color-border-dim)] rounded-xl p-5 h-[160px] flex flex-col justify-between">
+                <div key={i} className="bg-[var(--color-glass)] backdrop-blur-md border border-[var(--color-glass-border)] rounded-2xl p-6 h-[180px] flex flex-col justify-between shadow-sm">
                   <div>
-                    <div className="w-24 h-3 bg-[var(--color-bg-elevated)] rounded-sm mb-3 animate-pulse"></div>
-                    <div className="w-full h-4 bg-[var(--color-bg-elevated)] rounded-sm mb-2 animate-pulse" style={{ animationDelay: `${i * 100}ms` }}></div>
-                    <div className="w-3/4 h-4 bg-[var(--color-bg-elevated)] rounded-sm animate-pulse" style={{ animationDelay: `${i * 100}ms` }}></div>
+                    <div className="w-24 h-3 bg-[var(--color-bg-elevated)] rounded-full mb-4 animate-pulse"></div>
+                    <div className="w-full h-4 bg-[var(--color-bg-elevated)] rounded-full mb-3 animate-pulse" style={{ animationDelay: `${i * 100}ms` }}></div>
+                    <div className="w-3/4 h-4 bg-[var(--color-bg-elevated)] rounded-full animate-pulse" style={{ animationDelay: `${i * 100}ms` }}></div>
                   </div>
-                  <div className="w-16 h-3 bg-[var(--color-bg-elevated)] rounded-sm animate-pulse"></div>
+                  <div className="w-16 h-3 bg-[var(--color-bg-elevated)] rounded-full animate-pulse"></div>
                 </div>
               ))}
             </div>
@@ -271,24 +277,37 @@ export default function Dashboard() {
             }
 
             return (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ staggerChildren: 0.1 }}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+              >
                 {filteredDocuments.map(doc => {
                   const cfg = getDocConfig(doc.doc_type);
                   const preview = stripMarkdown(doc.content).slice(0, 120) + (doc.content.length > 120 ? '...' : '');
                   
                   return (
-                    <div 
+                    <motion.div
                       key={doc.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
                       onClick={() => setSelectedDoc(doc)}
-                      className="group relative bg-[var(--color-bg-surface)] border border-[var(--color-border-dim)] hover:border-[var(--color-border-strong)] rounded-xl p-5 cursor-pointer transition-all hover:-translate-y-0.5 overflow-hidden flex flex-col h-[180px]"
+                      className="group relative bg-[var(--color-glass)] backdrop-blur-xl border border-[var(--color-glass-border)] hover:border-[var(--color-border-accent)] rounded-2xl p-6 cursor-pointer transition-all hover:-translate-y-1 overflow-hidden flex flex-col h-[200px] shadow-sm hover:shadow-[0_10px_30px_var(--color-accent-glow)]"
                     >
                       {/* Left Accent Bar */}
                       <div 
-                        className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl transition-colors"
+                        className="absolute left-0 top-0 bottom-0 w-[4px] rounded-l-2xl transition-all group-hover:w-[6px]"
+                        style={{ backgroundColor: cfg.color }}
+                      />
+
+                      {/* Decorative Background Glow on Hover */}
+                      <div 
+                        className="absolute -right-10 -bottom-10 w-32 h-32 rounded-full opacity-0 group-hover:opacity-20 transition-opacity blur-3xl"
                         style={{ backgroundColor: cfg.color }}
                       />
                       
-                      <div className="pl-2 flex-1">
+                      <div className="pl-2 flex-1 relative z-10">
                         <div className="flex items-center justify-between mb-1.5">
                           <span 
                             className="text-[10px] font-sans font-medium uppercase tracking-[0.08em]"
@@ -301,17 +320,17 @@ export default function Dashboard() {
                           </span>
                         </div>
                         
-                        <h3 className="font-heading font-medium text-[15px] text-[var(--color-text-primary)] line-clamp-2 leading-tight mb-3">
+                        <h3 className="font-heading font-semibold text-[17px] tracking-tight text-[var(--color-text-primary)] line-clamp-2 leading-tight mb-3 group-hover:text-[var(--color-accent)] transition-colors">
                           {doc.title}
                         </h3>
                         
-                        <p className="text-[12px] text-[var(--color-text-secondary)] font-sans leading-[1.6] line-clamp-3">
+                        <p className="text-[13px] text-[var(--color-text-secondary)] font-sans leading-[1.6] line-clamp-3">
                           {preview}
                         </p>
                       </div>
 
                       {/* Action buttons (appear on hover) */}
-                      <div className="pl-2 mt-auto flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                      <div className="pl-2 mt-auto flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 relative z-10">
                         <button 
                           onClick={(e) => { e.stopPropagation(); downloadPDF(doc); }}
                           className="flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-elevated)] rounded transition-colors"
@@ -325,10 +344,10 @@ export default function Dashboard() {
                           <Trash2 className="w-3.5 h-3.5" /> Delete
                         </button>
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })}
-              </div>
+              </motion.div>
             );
           })()}
 

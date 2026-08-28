@@ -13,51 +13,65 @@
 }
 
 :root {
-  /* Light Theme (Modern Zinc Aesthetic) */
-  --color-bg-base: #f4f4f5;
-  --color-bg-surface: #fafafa;
-  --color-bg-elevated: #e4e4e7;
-  --color-bg-subtle: #d4d4d8;
-  
-  --color-accent: #d97706;
-  --color-accent-dim: #b45309;
-  --color-accent-muted: rgba(217, 119, 6, 0.12);
-  --color-accent-glow: rgba(217, 119, 6, 0.06);
-  
-  --color-text-primary: #18181b;
-  --color-text-secondary: #52525b;
-  --color-text-muted: #a1a1aa;
-  
-  --color-border-dim: rgba(0,0,0,0.08);
+  /* Light Theme - Clean, ethereal, glassmorphic */
+  --color-bg-base: #f8fafc;
+  --color-bg-surface: #ffffff;
+  --color-bg-elevated: #f1f5f9;
+  --color-bg-subtle: #e2e8f0;
+
+  --color-glass: rgba(255, 255, 255, 0.7);
+  --color-glass-border: rgba(0, 0, 0, 0.08);
+  --color-glass-hover: rgba(255, 255, 255, 0.9);
+
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94a3b8;
+
+  --color-border-dim: rgba(0,0,0,0.06);
   --color-border-strong: rgba(0,0,0,0.15);
-  --color-border-accent: rgba(217, 119, 6, 0.3);
-  
+  --color-border-accent: rgba(16, 185, 129, 0.4);
+
+  --color-accent: #10b981; /* Emerald 500 */
+  --color-accent-dim: #059669; /* Emerald 600 */
+  --color-accent-glow: rgba(16, 185, 129, 0.15);
+  --color-accent-glass: rgba(16, 185, 129, 0.08);
+  --color-accent-muted: rgba(16, 185, 129, 0.12);
+
   --color-semantic-purple: #8b5cf6;
   --color-semantic-slate: #64748b;
+  --color-semantic-blue: #3b82f6;
+  --color-semantic-green: #10b981;
 }
 
 :root[data-theme="dark"] {
-  /* Dark Theme */
-  --color-bg-base: #080808;
-  --color-bg-surface: #111111;
-  --color-bg-elevated: #1a1a1a;
-  --color-bg-subtle: #222222;
+  /* Dark Theme - Deep, premium */
+  --color-bg-base: #050505;
+  --color-bg-surface: #121212;
+  --color-bg-elevated: #1e1e1e;
+  --color-bg-subtle: #2a2a2a;
 
-  --color-accent: #e6a336;
-  --color-accent-dim: #c48a24;
-  --color-accent-muted: rgba(230,163,54,0.12);
-  --color-accent-glow: rgba(230,163,54,0.06);
+  --color-glass: rgba(255, 255, 255, 0.03);
+  --color-glass-border: rgba(255, 255, 255, 0.1);
+  --color-glass-hover: rgba(255, 255, 255, 0.08);
 
-  --color-text-primary: #f5f5f0;
-  --color-text-secondary: #8a8a80;
-  --color-text-muted: #4a4a44;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #cbd5e1;
+  --color-text-muted: #64748b;
 
-  --color-border-dim: rgba(255,255,255,0.07);
-  --color-border-strong: rgba(255,255,255,0.12);
-  --color-border-accent: rgba(230,163,54,0.3);
-  
+  --color-border-dim: rgba(255,255,255,0.08);
+  --color-border-strong: rgba(255,255,255,0.15);
+  --color-border-accent: rgba(52, 211, 153, 0.4);
+
+  --color-accent: #34d399; /* Emerald 400 */
+  --color-accent-dim: #10b981; /* Emerald 500 */
+  --color-accent-glow: rgba(52, 211, 153, 0.15);
+  --color-accent-glass: rgba(52, 211, 153, 0.1);
+  --color-accent-muted: rgba(52, 211, 153, 0.12);
+
   --color-semantic-purple: #a78bfa;
   --color-semantic-slate: #94a3b8;
+  --color-semantic-blue: #60a5fa;
+  --color-semantic-green: #34d399;
 }
 
 body {

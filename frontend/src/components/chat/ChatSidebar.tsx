@@ -54,9 +54,11 @@ export function ChatSidebar({
       <div className="px-4 pb-6 shrink-0 mt-2">
         <button 
           onClick={startNewChat}
-          className="w-full flex items-center justify-center gap-2 h-[40px] bg-[var(--color-bg-base)] border border-[var(--color-border-dim)] text-[var(--color-accent)] hover:bg-[var(--color-accent-muted)] hover:border-[var(--color-border-accent)] rounded-lg transition-all text-[14px] font-medium shadow-sm"
+          className="group w-full flex items-center justify-start gap-3 h-[44px] px-4 bg-transparent border border-[var(--color-glass-border)] text-[var(--color-text-primary)] hover:text-[var(--color-text-primary)] rounded-xl transition-all font-medium hover:border-[var(--color-border-accent)] hover:bg-[var(--color-accent-glow)] relative overflow-hidden"
         >
-          <span className="text-[18px] leading-none">+</span> New chat
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/10 to-emerald-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+          <span className="text-[20px] font-light text-[var(--color-accent)] leading-none group-hover:scale-125 transition-transform">+</span> 
+          <span className="text-[14px]">New Chat</span>
         </button>
       </div>
       
@@ -81,10 +83,10 @@ export function ChatSidebar({
               return (
                 <div 
                   key={conv.id} 
-                  className={`group flex items-center justify-between w-full h-[36px] px-3 rounded transition-colors cursor-pointer ${
+                  className={`group flex items-center justify-between w-full h-[40px] px-3 rounded-lg transition-all cursor-pointer ${
                     isActive 
-                      ? 'bg-[var(--color-accent-muted)] border-l-2 border-[var(--color-accent)] pl-2.5' 
-                      : 'border-l-2 border-transparent hover:bg-[var(--color-bg-elevated)]'
+                      ? 'bg-gradient-to-r from-emerald-500/15 to-transparent border-l-[3px] border-[var(--color-accent)] pl-2.5' 
+                      : 'border-l-[3px] border-transparent hover:bg-[var(--color-glass-hover)]'
                   }`}
                   onClick={() => loadConversation(conv.id)}
                 >
