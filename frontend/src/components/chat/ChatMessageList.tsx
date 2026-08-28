@@ -5,7 +5,7 @@ import rehypeRaw from 'rehype-raw';
 import { Scale, ThumbsUp, ThumbsDown, Copy } from "lucide-react";
 import { FlowAnimation } from "./FlowAnimation";
 
-const AIMessageActions = ({ content }: { content: string }) => {
+const AIMessageActions = React.memo(({ content }: { content: string }) => {
   const [copied, setCopied] = React.useState(false);
   const [feedback, setFeedback] = React.useState<'up' | 'down' | null>(null);
 
@@ -34,6 +34,32 @@ const AIMessageActions = ({ content }: { content: string }) => {
       </button>
     </div>
   );
+});
+
+// Stable markdown component map — defined OUTSIDE render to prevent
+// ReactMarkdown from remounting its output tree on every parent re-render.
+const MD_COMPONENTS = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  p: ({node, ...props}: any) => <p className="mb-4 last:mb-0" {...props} />,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  h1: ({node, ...props}: any) => <h1 className="font-heading font-medium text-xl mt-6 mb-3" {...props} />,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  h2: ({node, ...props}: any) => <h2 className="font-heading font-medium text-lg mt-5 mb-2" {...props} />,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  h3: ({node, ...props}: any) => <h3 className="font-heading font-medium text-[16px] mt-4 mb-2" {...props} />,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ul: ({node, ...props}: any) => <ul className="list-disc pl-5 mb-4" {...props} />,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ol: ({node, ...props}: any) => <ol className="list-decimal pl-5 mb-4" {...props} />,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  li: ({node, ...props}: any) => <li className="mb-1" {...props} />,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  a: ({node, ...props}: any) => <a target="_blank" rel="noopener noreferrer" className="text-[var(--color-accent)] underline underline-offset-2 hover:opacity-80 transition-opacity" {...props} />,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  code: ({node, inline, ...props}: any) =>
+    inline
+      ? <code className="font-mono text-[13px] bg-[var(--color-bg-subtle)] px-1.5 py-0.5 rounded text-[var(--color-text-primary)]" {...props} />
+      : <code className="block font-mono text-[13px] bg-[var(--color-bg-subtle)] p-4 rounded border border-[var(--color-border-dim)] overflow-x-auto my-4 whitespace-pre-wrap" {...props} />,
 };
 
 export interface Message {
@@ -54,7 +80,7 @@ interface ChatMessageListProps {
   exportRef: React.RefObject<HTMLDivElement | null>;
 }
 
-export function ChatMessageList({
+export const ChatMessageList = React.memo(function ChatMessageList({
   messages,
   loading,
   setInput,
@@ -127,20 +153,7 @@ export function ChatMessageList({
                         <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
                           rehypePlugins={[rehypeRaw]}
-                          components={{
-                            p: ({node, ...props}) => <p className="mb-4 last:mb-0" {...props} />,
-                            h1: ({node, ...props}) => <h1 className="font-heading font-medium text-xl mt-6 mb-3" {...props} />,
-                            h2: ({node, ...props}) => <h2 className="font-heading font-medium text-lg mt-5 mb-2" {...props} />,
-                            h3: ({node, ...props}) => <h3 className="font-heading font-medium text-[16px] mt-4 mb-2" {...props} />,
-                            ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-4" {...props} />,
-                            ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-4" {...props} />,
-                            li: ({node, ...props}) => <li className="mb-1" {...props} />,
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            code: ({node, inline, ...props}: any) => 
-                              inline 
-                                ? <code className="font-mono text-[13px] bg-[var(--color-bg-subtle)] px-1.5 py-0.5 rounded text-[var(--color-text-primary)]" {...props} />
-                                : <code className="block font-mono text-[13px] bg-[var(--color-bg-subtle)] p-4 rounded border border-[var(--color-border-dim)] overflow-x-auto my-4 whitespace-pre-wrap" {...props} />,
-                          }}
+                          components={MD_COMPONENTS}
                         >
                           {msg.content}
                         </ReactMarkdown>
