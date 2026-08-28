@@ -231,7 +231,7 @@ export default function Dashboard() {
           ) : documents.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center border border-dashed border-[var(--color-border-strong)] rounded-xl">
               <div className="w-12 h-12 rounded-full bg-[var(--color-bg-subtle)] flex items-center justify-center mb-4">
-                <span className="text-xl">ðŸ“„</span>
+                <span className="text-xl">📄</span>
               </div>
               <h3 className="font-heading font-medium text-[16px] text-[var(--color-text-primary)] mb-1">No documents yet</h3>
               <p className="text-[14px] text-[var(--color-text-secondary)] mb-6">Generated drafts will appear here.</p>
