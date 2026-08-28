@@ -104,9 +104,11 @@ def verifier_node(state: AgentState) -> dict:
         print("[Verifier] Skipping verification because a document was drafted.")
         return {}
         
-    # Skip verification if the user is in an interactive document-filling flow
-    if state.get("user_intent") == "Fill_Document":
-        print("[Verifier] Skipping verification because intent is Fill_Document.")
+    # Skip verification if the user is in a general, non-actionable, or interactive flow
+    # to prevent forcing deadlines/roadmaps/citations onto general informational queries.
+    skip_intents = {"General_Legal_Advice", "Civic_Info", "Chitchat", "Scheme_Info", "Fill_Document", "Off-Topic"}
+    if state.get("user_intent") in skip_intents:
+        print(f"[Verifier] Skipping verification because intent is {state.get('user_intent')}.")
         return {}
 
     # Find last AI message
@@ -129,49 +131,62 @@ def verifier_node(state: AgentState) -> dict:
         return {}
     user_question = human_messages[-1].content
 
-    # Run the verifier
+    # Run the verifier (up to 3 times max)
+    current_response = last_ai_response
+    has_modified = False
+
     try:
-        verify_chain = verifier_prompt | verifier_llm
-        verify_response = _strip_think(verify_chain.invoke({
-            "question": user_question,
-            "response": last_ai_response
-        }).content)
-
-        # Parse JSON response
         import json
-        # Extract JSON from response (handle cases where model adds text around it)
-        json_match = re.search(r'\{.*\}', verify_response, re.DOTALL)
-        if not json_match:
-            return {}  # Can't parse, skip correction
+        verify_chain = verifier_prompt | verifier_llm
+        correction_chain = correction_prompt | correction_llm
+        context = "\n\n".join(state.get("retrieved_context", []))
 
-        evaluation = json.loads(json_match.group())
-        score = evaluation.get("score", 10)
-        passes = evaluation.get("passes", True)
-        issues = evaluation.get("issues", [])
+        for attempt in range(1, 4):
+            print(f"[Verifier] Running verification attempt {attempt}/3...")
+            verify_response = _strip_think(verify_chain.invoke({
+                "question": user_question,
+                "response": current_response
+            }).content)
 
-        print(f"[Verifier] Score: {score}/10 | Passes: {passes} | Issues: {issues}")
+            # Extract JSON from response
+            json_match = re.search(r'\{.*\}', verify_response, re.DOTALL)
+            if not json_match:
+                print(f"[Verifier] Failed to parse JSON on attempt {attempt}, accepting current draft.")
+                break
 
-        # Only re-draft if score is below threshold and there are real issues
-        if not passes and score < 7.5 and issues:
-            print(f"[Verifier] Score {score} < 7.5 — triggering correction loop.")
-            context = "\n\n".join(state.get("retrieved_context", []))
+            evaluation = json.loads(json_match.group())
+            score = evaluation.get("score", 10)
+            passes = evaluation.get("passes", True)
+            issues = evaluation.get("issues", [])
 
-            correction_chain = correction_prompt | correction_llm
-            corrected_response = strip_think(correction_chain.invoke({
+            print(f"[Verifier] Attempt {attempt} - Score: {score}/10 | Passes: {passes} | Issues: {issues}")
+
+            if passes or score >= 7.5 or not issues:
+                print(f"[Verifier] Response accepted on attempt {attempt} (score={score}/10).")
+                break
+            
+            # If we reached the final attempt and it still fails, append a warning
+            if attempt == 3:
+                print("[Verifier] Max attempts (3) reached. Appending verification warning.")
+                current_response += "\n\n> ⚠️ **Verification Note:** This response could not be fully verified for compliance by the reflexion layer. Please verify key details independently."
+                has_modified = True
+                break
+
+            # Trigger re-draft for next attempt
+            print(f"[Verifier] Score {score} < 7.5 — triggering re-draft for attempt {attempt + 1}...")
+            current_response = strip_think(correction_chain.invoke({
                 "issues": "; ".join(issues),
                 "context": context[:3000],
                 "question": user_question
             }).content)
+            has_modified = True
 
-            print(f"[Verifier] Triggered re-draft due to low score ({score}/10)")
-
-            # Replace last AI message with corrected one
+        if has_modified:
+            # Replace last AI message with the updated/corrected one
             non_ai_messages = [m for m in messages if not isinstance(m, AIMessage)]
             return {
-                "messages": non_ai_messages + [AIMessage(content=corrected_response)]
+                "messages": non_ai_messages + [AIMessage(content=current_response)]
             }
-        else:
-            print(f"[Verifier] Score {score} >= 7.5 — response accepted, no correction needed.")
 
     except Exception as e:
         print(f"[Verifier] Error during verification: {e}")
