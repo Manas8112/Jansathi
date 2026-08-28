@@ -2,8 +2,10 @@ import React from "react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
-import { Scale, ThumbsUp, ThumbsDown, Copy } from "lucide-react";
+import { Scale, ThumbsUp, ThumbsDown, Copy, ShieldCheck } from "lucide-react";
+import { motion } from "framer-motion";
 import { FlowAnimation } from "./FlowAnimation";
+import { DocumentScanner } from "./DocumentScanner";
 
 const AIMessageActions = ({ content }: { content: string }) => {
   const [copied, setCopied] = React.useState(false);
@@ -128,18 +130,25 @@ export function ChatMessageList({
                           remarkPlugins={[remarkGfm]}
                           rehypePlugins={[rehypeRaw]}
                           components={{
-                            p: ({node, ...props}) => <p className="mb-4 last:mb-0" {...props} />,
-                            h1: ({node, ...props}) => <h1 className="font-heading font-medium text-xl mt-6 mb-3" {...props} />,
-                            h2: ({node, ...props}) => <h2 className="font-heading font-medium text-lg mt-5 mb-2" {...props} />,
-                            h3: ({node, ...props}) => <h3 className="font-heading font-medium text-[16px] mt-4 mb-2" {...props} />,
-                            ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-4" {...props} />,
-                            ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-4" {...props} />,
-                            li: ({node, ...props}) => <li className="mb-1" {...props} />,
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            p: ({node, ...props}: any) => <motion.p initial={{opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} transition={{duration: 0.4}} className="mb-4 last:mb-0" {...props} />,
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            h1: ({node, ...props}: any) => <motion.h1 initial={{opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} transition={{duration: 0.4}} className="font-heading font-medium text-xl mt-6 mb-3" {...props} />,
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            h2: ({node, ...props}: any) => <motion.h2 initial={{opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} transition={{duration: 0.4}} className="font-heading font-medium text-lg mt-5 mb-2" {...props} />,
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            h3: ({node, ...props}: any) => <motion.h3 initial={{opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} transition={{duration: 0.4}} className="font-heading font-medium text-[16px] mt-4 mb-2" {...props} />,
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            ul: ({node, ...props}: any) => <motion.ul initial={{opacity: 0}} animate={{opacity: 1}} transition={{duration: 0.5}} className="list-disc pl-5 mb-4" {...props} />,
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            ol: ({node, ...props}: any) => <motion.ol initial={{opacity: 0}} animate={{opacity: 1}} transition={{duration: 0.5}} className="list-decimal pl-5 mb-4" {...props} />,
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            li: ({node, ...props}: any) => <motion.li initial={{opacity: 0, x: -5}} animate={{opacity: 1, x: 0}} transition={{duration: 0.3}} className="mb-1" {...props} />,
                             // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             code: ({node, inline, ...props}: any) => 
                               inline 
                                 ? <code className="font-mono text-[13px] bg-[var(--color-bg-subtle)] px-1.5 py-0.5 rounded text-[var(--color-text-primary)]" {...props} />
-                                : <code className="block font-mono text-[13px] bg-[var(--color-bg-subtle)] p-4 rounded border border-[var(--color-border-dim)] overflow-x-auto my-4 whitespace-pre-wrap" {...props} />,
+                                : <motion.code initial={{opacity: 0}} animate={{opacity: 1}} className="block font-mono text-[13px] bg-[var(--color-bg-subtle)] p-4 rounded border border-[var(--color-border-dim)] overflow-x-auto my-4 whitespace-pre-wrap" {...props} />,
                           }}
                         >
                           {msg.content}
@@ -149,20 +158,41 @@ export function ChatMessageList({
                       {/* Action Buttons for AI Message */}
                       <AIMessageActions content={msg.content} />
                       
+                      {/* Reflexion Verified Badge */}
+                      {!loading && (msg.intent?.includes("Draft") || msg.intent?.includes("Advice") || msg.intent?.includes("RTI") || msg.intent?.includes("Notice")) && (
+                        <motion.div 
+                          initial={{ scale: 1.5, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.5 }}
+                          className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--color-accent-glass)] border border-[var(--color-accent-glass)] rounded-full text-[var(--color-accent)] text-[11px] font-semibold tracking-wide uppercase shadow-sm"
+                        >
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                          Reflexion Verified
+                        </motion.div>
+                      )}
+
                       {msg.referenced_nodes && msg.referenced_nodes.length > 0 && (
-                        <details className="mt-4 border border-[var(--color-border-dim)] rounded-md bg-[var(--color-bg-subtle)]" data-html2canvas-ignore="true">
-                          <summary className="cursor-pointer text-[12px] text-[var(--color-text-muted)] p-2 font-medium hover:text-[var(--color-text-primary)] transition-colors">
-                            📚 Knowledge Sources ({msg.referenced_nodes.length})
-                          </summary>
-                          <ul className="px-4 pb-3 pt-1 text-[11px] text-[var(--color-text-secondary)] space-y-2">
-                            {msg.referenced_nodes.map((node, idx) => (
-                              <li key={idx} className="border-l-2 border-[var(--color-accent)] pl-2">
-                                <span className="font-semibold block text-[var(--color-text-primary)]">{node.name}</span>
-                                {node.description && <span className="block mt-0.5 opacity-80">{node.description}</span>}
-                              </li>
-                            ))}
-                          </ul>
-                        </details>
+                        <div className="mt-5 flex flex-wrap gap-2" data-html2canvas-ignore="true">
+                          {msg.referenced_nodes.map((node, idx) => (
+                            <motion.div 
+                              key={idx} 
+                              initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              transition={{ delay: 0.1 * idx, type: "spring", stiffness: 100 }}
+                              className="group/chip relative flex items-center gap-2 px-3 py-1.5 bg-[var(--color-bg-subtle)] border border-[var(--color-border-dim)] hover:border-[var(--color-accent)] rounded-full transition-all cursor-default"
+                            >
+                              <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] animate-pulse"></div>
+                              <span className="text-[11px] font-medium text-[var(--color-text-primary)]">{node.name}</span>
+                              
+                              {/* Tooltip on hover */}
+                              {node.description && (
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-[#1a1a1a] border border-[#333] rounded-md shadow-xl opacity-0 invisible group-hover/chip:opacity-100 group-hover/chip:visible transition-all text-[10px] text-[var(--color-text-primary)]/80 z-10 pointer-events-none">
+                                  {node.description}
+                                </div>
+                              )}
+                            </motion.div>
+                          ))}
+                        </div>
                       )}
 
                     </div>
@@ -171,10 +201,14 @@ export function ChatMessageList({
               </div>
             ))}
 
-            {/* LOADING INDICATOR: Using FlowAnimation */}
+            {/* LOADING INDICATOR */}
             {loading && (
               <div className="flex items-start gap-3 w-full" data-html2canvas-ignore="true">
-                <FlowAnimation />
+                {messages.length > 0 && messages[messages.length - 1].content.includes("Uploaded document:") ? (
+                  <DocumentScanner />
+                ) : (
+                  <FlowAnimation />
+                )}
               </div>
             )}
             
