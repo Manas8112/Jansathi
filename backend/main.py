@@ -34,7 +34,11 @@ async def lifespan(app: FastAPI):
         def warmup_hf():
             from huggingface_hub import InferenceClient
             import time
+            import os
             try:
+                # Fix for huggingface_hub bug: internal API calls require the env var for private repos
+                os.environ["HF_TOKEN"] = hf_token
+                
                 # Give Render's container network interface 10 seconds to fully establish DNS resolvers
                 time.sleep(10)
                 client = InferenceClient(token=hf_token)

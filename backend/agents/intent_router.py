@@ -307,6 +307,11 @@ def intent_router_node(state: AgentState) -> dict:
         hf_token = os.getenv("HF_API_TOKEN")
         if hf_model_id and hf_token:
             from huggingface_hub import InferenceClient
+            import os
+            
+            # Fix for huggingface_hub bug: internal API calls require the env var for private repos
+            os.environ["HF_TOKEN"] = hf_token
+            
             try:
                 print(f"[IntentRouter] Attempting Hugging Face API fallback ({hf_model_id})...")
                 client = InferenceClient(token=hf_token)
